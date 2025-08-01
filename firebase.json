@@ -11,6 +11,9 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "predeploy": [
+      "node check-branch.js"
     ]
   }
 }
