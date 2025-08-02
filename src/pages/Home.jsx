@@ -1,5 +1,8 @@
 import React from 'react';
 import { Container, Typography, Box, Grid, Card, CardContent, CardActions, Button } from '@mui/material';
+import SearchBar from "../components/SearchBar";
+import QuickCategories from "../components/QuickCategories";
+import FeaturedHotels from "../components/FeaturedHotels"; 
 
 const features = [
   { title: "Gyms", description: "Find the best fitness centers in Mysuru", link: "/gyms" },
@@ -9,36 +12,35 @@ const features = [
 ];
 
 export default function Home() {
+  const handleCategoryClick = (category) => {
+    console.log("Clicked:", category);
+    // You can navigate to `/hotels` or `/gyms` etc.
+  };
   return (
     <Container sx={{ mt: 4 }}>
-      {/* Hero Section */}
       <Box textAlign="center" mb={5}>
-        <Typography variant="h3" gutterBottom>
-          Welcome to Mysurian
+        <Typography variant="h1" gutterBottom borderTop={2} borderColor="primary.main" pt={10} pb={2}>
+          Discover Mysuru Like Never Before
         </Typography>
-        <Typography variant="h6" color="text.secondary">
-          Your one-stop guide to everything in Mysuru
+        <Typography variant="h6" color="text.secondary" pb={10}>
+          Uncover the best places, experiences, and secrets of the city!
         </Typography>
       </Box>
-
-      {/* Feature Cards */}
-      <Grid container spacing={3}>
-        {features.map((feature, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h5">{feature.title}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {feature.description}
-                </Typography>
-              </CardContent>
-              <CardActions>
-                <Button size="small" href={feature.link}>Explore</Button>
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      <Container maxWidth="md"> {/* Search Bar */}
+      <Box sx={{ mt: 5 , mb: 5}}>
+        <SearchBar />
+      </Box>
+      </Container>
+      <Container maxWidth="lg">
+      <Box sx={{ mt: 10 }}>
+        <QuickCategories onCategoryClick={handleCategoryClick} />
+      </Box>
+      </Container>
+      <Container maxWidth="lg">
+      <Box sx={{ mt: 5 }}>
+        <FeaturedHotels />
+      </Box>
+      </Container>
     </Container>
   );
 }

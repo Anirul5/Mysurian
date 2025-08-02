@@ -7,14 +7,21 @@ import { Link } from 'react-router-dom';
 
 export default function Navbar() {
   return (
-    <AppBar position="static">
+    <AppBar position="static" sx={{boxShadow: 'none'}}>
       <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+        <Button variant="h6" component={Link} to="/"  color="inherit">
           Mysurian
-        </Typography>
-        <Button color="inherit" component={Link} to="/">Home</Button>
-        <Button color="inherit" component={Link} to="/gyms">Gyms</Button>
-        <Button color="inherit" component={Link} to="/hotels">Hotels</Button>
+        </Button>
+        <Typography variant="h6" sx={{ flexGrow: 1 }} />
+        <Button color="inherit" component={Link} to="/">
+          Home
+        </Button>
+        <Button color="inherit" component={Link} to="/gyms">
+          Gyms
+        </Button>
+        <Button color="inherit" component={Link} to="/hotels">
+          Hotels
+        </Button>
       </Toolbar>
     </AppBar>
   );
