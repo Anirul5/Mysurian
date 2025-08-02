@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 
 export default function Navbar() {
   return (
-    <AppBar position="static" sx={{boxShadow: 'none'}}>
+    <AppBar position="static" sx={{boxShadow: 'none', padding: '0 25px', backgroundColor: '#fff'}}>
       <Toolbar>
         <Button variant="h6" component={Link} to="/"  color="inherit">
           Mysurian

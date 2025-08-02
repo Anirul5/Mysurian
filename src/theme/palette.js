@@ -12,4 +12,13 @@ export default {
     default: '#F5F5F5',
     paper: '#FFFFFF',
   },
+  hotel: {
+    main: '#0f8000ff', // Green
+  },
+  gym: {
+    main: '#7e6d10ff', // Red
+  },
+  food: {
+    main: '#43f36fff', // Cyan
+  },
 };

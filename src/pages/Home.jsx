@@ -2,7 +2,11 @@ import React from 'react';
 import { Container, Typography, Box, Grid, Card, CardContent, CardActions, Button } from '@mui/material';
 import SearchBar from "../components/SearchBar";
 import QuickCategories from "../components/QuickCategories";
-import FeaturedHotels from "../components/FeaturedHotels"; 
+import FeaturedListings from '../components/FeaturedListings';
+import LocalEvents from '../components/LocalEvents';
+import Testimonials from '../components/Testimonials';
+import CallToAction from '../components/CallToAction';
+import Footer from '../components/Footer';
 
 const features = [
   { title: "Gyms", description: "Find the best fitness centers in Mysuru", link: "/gyms" },
@@ -16,6 +20,12 @@ export default function Home() {
     console.log("Clicked:", category);
     // You can navigate to `/hotels` or `/gyms` etc.
   };
+  const handleEventClick = (event) => {
+    console.log("Event clicked:", event);
+    // Later: Navigate to event details page
+  };
+
+
   return (
     <Container sx={{ mt: 4 }}>
       <Box textAlign="center" mb={5}>
@@ -38,9 +48,24 @@ export default function Home() {
       </Container>
       <Container maxWidth="lg">
       <Box sx={{ mt: 5 }}>
-        <FeaturedHotels />
+        <FeaturedListings />
       </Box>
       </Container>
-    </Container>
+      <Container maxWidth="lg">
+      {/* Other sections */}
+      <LocalEvents onEventClick={handleEventClick} />
+      </Container>
+      <Container maxWidth="lg">
+      <Box sx={{ mt: 5 }}>
+        <Testimonials />
+      </Box>
+      </Container>
+      <Container maxWidth="lg">
+      <Box sx={{ mt: 5 }}>
+        <CallToAction />
+      </Box>
+      </Container>
+      </Container>
+      
   );
 }
