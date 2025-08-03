@@ -9,13 +9,14 @@ export default function Gyms() {
         <title>Gyms & Fitness in Mysuru | Mysurian</title>
         <meta
           name="description"
-          content="Find the best gyms and fitness centers in Mysuru with reviews, ratings, and membership info."
+          content="Discover the best gyms and fitness centers in Mysuru. Find the perfect place to stay fit."
         />
       </Helmet>
+
       <DataList
-        title="Gyms & Fitness"
         collectionName="gyms"
-        fields={["address", "contact"]}
+        fields={["address", "rating", "contact"]}
+        title="Gyms & Fitness in Mysuru"
       />
     </>
   );

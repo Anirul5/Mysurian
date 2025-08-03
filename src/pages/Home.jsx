@@ -1,5 +1,5 @@
-import React from 'react';
-import { Container, Typography, Box, Grid, Card, CardContent, CardActions, Button } from '@mui/material';
+import React, { useState, useEffect, useRef } from 'react';
+import { Container, Typography, Box, Paper, List, ListItem, ListItemText, Chip } from '@mui/material';
 import SearchBar from "../components/SearchBar";
 import QuickCategories from "../components/QuickCategories";
 import FeaturedListings from '../components/FeaturedListings';
@@ -7,41 +7,127 @@ import LocalEvents from '../components/LocalEvents';
 import Testimonials from '../components/Testimonials';
 import CallToAction from '../components/CallToAction';
 import { Helmet } from 'react-helmet-async';
-
-const features = [
-  { title: "Gyms", description: "Find the best fitness centers in Mysuru", link: "/gyms" },
-  { title: "Hotels", description: "Discover top-rated places to stay", link: "/hotels" },
-  //{ title: "Food", description: "Explore delicious food spots", link: "/food" },
-  //{ title: "Tourism", description: "Plan your visits to major attractions", link: "/tourism" },
-];
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebaseConfig";
+import { useNavigate } from "react-router-dom";
 
 export default function Home() {
-  const handleCategoryClick = (category) => {
-    console.log("Clicked:", category);
-    // You can navigate to `/hotels` or `/gyms` etc.
-  };
-  const handleEventClick = (event) => {
-    console.log("Event clicked:", event);
-    // Later: Navigate to event details page
+  const [searchTerm, setSearchTerm] = useState("");
+  const [results, setResults] = useState([]);
+  const [preloadedItems, setPreloadedItems] = useState([]);
+  const navigate = useNavigate();
+  const dropdownRef = useRef(null);
+
+  const categoriesList = [
+    { name: "Hotels", category: "hotels", type: "category" },
+    { name: "Gyms", category: "gyms", type: "category" },
+    { name: "Restaurants", category: "restaurants", type: "category" },
+    { name: "Events", category: "events", type: "category" }
+  ];
+
+  const categoryColors = {
+    hotels: "primary",
+    gyms: "success",
+    restaurants: "warning",
+    events: "secondary",
+    default: "default"
   };
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setResults([]);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Preload some featured/random items
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      const categories = ["hotels", "gyms", "restaurants", "events", "default"];
+      let allData = [];
+
+      for (let category of categories) {
+        const snapshot = await getDocs(collection(db, category));
+        let list = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          category,
+          type: "listing"
+        }));
+        // Shuffle and take a few items
+        list.sort(() => Math.random() - 0.5);
+        allData = [...allData, ...list.slice(0, 3)];
+      }
+      setPreloadedItems(allData);
+    };
+    fetchFeatured();
+  }, []);
+
+  // Hybrid Search
+  useEffect(() => {
+    if (!searchTerm) {
+      setResults([]);
+      return;
+    }
+
+    const matchedCategories = categoriesList.filter(cat =>
+      cat.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const matchedPreloaded = preloadedItems.filter(item =>
+      item.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    setResults([...matchedCategories, ...matchedPreloaded]);
+
+    if (searchTerm.length > 2) {
+      const fetchLazyResults = async () => {
+        const categories = ["hotels", "gyms", "restaurants", "events", "default"];
+        let allMatches = [];
+
+        for (let category of categories) {
+          const snapshot = await getDocs(collection(db, category));
+          const matches = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data(), category, type: "listing" }))
+            .filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+          allMatches = [...allMatches, ...matches];
+        }
+
+        const combined = [...matchedCategories, ...allMatches];
+        const unique = combined.filter(
+          (v, i, a) =>
+            a.findIndex(t => (t.id === v.id && t.category === v.category && t.type === v.type)) === i
+        );
+        setResults(unique);
+      };
+      fetchLazyResults();
+    }
+  }, [searchTerm, preloadedItems]);
+
+  const handleSelect = (item) => {
+    if (item.type === "category") {
+      navigate(`/${item.category}`);
+    } else {
+      navigate(`/${item.category}/${item.id}`);
+    }
+    setSearchTerm("");
+    setResults([]);
+  };
 
   return (
     <Container sx={{ mt: 4 }}>
-       <Helmet>
+      <Helmet>
         <title>Mysurian - Discover Mysuru Like Never Before</title>
         <meta
           name="description"
           content="Uncover the best places, events, and experiences in Mysuru with Mysurian. Explore hotels, restaurants, gyms, and more."
         />
-        <meta property="og:title" content="Mysurian - Discover Mysuru" />
-        <meta
-          property="og:description"
-          content="Uncover the best places, events, and experiences in Mysuru."
-        />
-        <meta property="og:image" content="/og-image.jpg" />
-        <meta property="og:url" content="https://mysurian09.web.app" />
       </Helmet>
+
       <Box textAlign="center" mb={5}>
         <Typography variant="h1" gutterBottom borderTop={2} borderColor="primary.main" pt={10} pb={2}>
           Discover Mysuru Like Never Before
@@ -50,36 +136,99 @@ export default function Home() {
           Uncover the best places, experiences, and secrets of the city!
         </Typography>
       </Box>
-      <Container maxWidth="md"> {/* Search Bar */}
-      <Box sx={{ mt: 5 , mb: 5}}>
-        <SearchBar />
-      </Box>
+
+      {/* Search Bar */}
+      <Container maxWidth="md" sx={{ position: "relative" }} ref={dropdownRef}>
+        <Box sx={{ mt: 5, mb: 5 }}>
+          <SearchBar
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search categories or places..."
+          />
+        </Box>
+
+        {results.length > 0 && (
+          <Paper
+            sx={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              right: 0,
+              zIndex: 10,
+              mt: 1,
+              borderRadius: "16px",
+              overflow: "hidden",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
+            }}
+          >
+            <List disablePadding>
+              {results.map((item, idx) => (
+                <ListItem
+                  button
+                  key={idx}
+                  onClick={() => handleSelect(item)}
+                  sx={{
+                    "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
+                    px: 2,
+                    py: 1.5,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center"
+                  }}
+                >
+                  <ListItemText
+                    primaryTypographyProps={{ fontWeight: 500, fontSize: "1rem" }}
+                    secondaryTypographyProps={{ fontSize: "0.85rem", color: "text.secondary" }}
+                    primary={item.name}
+                    secondary={
+                      item.type === "category"
+                        ? "Category"
+                        : item.category.charAt(0).toUpperCase() + item.category.slice(1)
+                    }
+                  />
+                  <Chip
+                    label={
+                      item.type === "category"
+                        ? "Category"
+                        : item.category.charAt(0).toUpperCase() + item.category.slice(1)
+                    }
+                    color={ item.type === "category"
+                      ? "default"
+                      : categoryColors[item.category] || "default"
+                    }
+                    size="small"
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+        )}
+      </Container>
+
+      {/* Sections */}
+      <Container maxWidth="lg">
+        <Box sx={{ mt: 10 }}>
+          <QuickCategories onCategoryClick={(c) => console.log("Clicked:", c)} />
+        </Box>
       </Container>
       <Container maxWidth="lg">
-      <Box sx={{ mt: 10 }} >
-        <QuickCategories onCategoryClick={handleCategoryClick} />
-      </Box>
+        <Box sx={{ mt: 5 }}>
+          <FeaturedListings />
+        </Box>
       </Container>
       <Container maxWidth="lg">
-      <Box sx={{ mt: 5 }}>
-        <FeaturedListings />
-      </Box>
+        <LocalEvents onEventClick={(e) => console.log("Event clicked:", e)} />
       </Container>
       <Container maxWidth="lg">
-      {/* Other sections */}
-      <LocalEvents onEventClick={handleEventClick} />
+        <Box sx={{ mt: 5 }}>
+          <Testimonials />
+        </Box>
       </Container>
       <Container maxWidth="lg">
-      <Box sx={{ mt: 5 }}>
-        <Testimonials />
-      </Box>
+        <Box sx={{ mt: 5 }}>
+          <CallToAction />
+        </Box>
       </Container>
-      <Container maxWidth="lg">
-      <Box sx={{ mt: 5 }}>
-        <CallToAction />
-      </Box>
-      </Container>
-      </Container>
-      
+    </Container>
   );
 }

@@ -3,36 +3,34 @@
   <!-- Home -->
   <url>
     <loc>https://mysurian09.web.app/</loc>
-    <changefreq>weekly</changefreq>
+    <lastmod>2025-08-03</lastmod>
+    <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 
-  <!-- Static category pages -->
+  <!-- Categories -->
   <url>
     <loc>https://mysurian09.web.app/hotels</loc>
+    <lastmod>2025-08-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://mysurian09.web.app/gyms</loc>
+    <lastmod>2025-08-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://mysurian09.web.app/restaurants</loc>
+    <lastmod>2025-08-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://mysurian09.web.app/events</loc>
+    <lastmod>2025-08-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-  </url>
-
-  <!-- Example detail pages (you can add more dynamically later) -->
-  <url>
-    <loc>https://mysurian09.web.app/hotels/hotel-doc-id</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
   </url>
 </urlset>
