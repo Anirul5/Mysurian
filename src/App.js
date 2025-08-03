@@ -5,6 +5,9 @@ import Home from './pages/Home';
 import Gyms from './pages/Gyms';
 import Hotels from './pages/Hotels';
 import Layout from './components/Layout';
+import Restaurants from './pages/Restaurants';
+import Events from './pages/Events';
+import DetailPage from './pages/DetailPage';
 
 function App() {
   return (
@@ -15,6 +18,10 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/gyms" element={<Gyms />} />
         <Route path="/hotels" element={<Hotels />} />
+        <Route path="/restaurants" element={<Restaurants />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/:collectionName/:id" element={<DetailPage />} />
+
       </Routes>
       </Layout>
     </Router>
