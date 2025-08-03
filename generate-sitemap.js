@@ -4,6 +4,7 @@ const { SitemapStream, streamToPromise } = require('sitemap');
 const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, getDocs } = require('firebase/firestore');
 
+
 // Firebase config (use same as firebaseConfig.js)
 const firebaseConfig = {
   apiKey: "AIzaSyANMLjscPssWyu6fJR15JcP2AL_8Xwocv4",

@@ -1,163 +1,204 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import {
-  Container,
-  Typography,
-  Button,
-  Box,
-  Grid,
-  Divider
+  Container, Typography, Box, Grid, Button, Breadcrumbs, Link as MuiLink,
+  Rating, Card, CardMedia, IconButton, Skeleton
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { motion } from "framer-motion";
 import { Helmet } from "react-helmet-async";
+import CallIcon from "@mui/icons-material/Call";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import LanguageIcon from "@mui/icons-material/Language";
+import ShareIcon from "@mui/icons-material/Share";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import Lightbox from "react-image-lightbox";
+import "react-image-lightbox/style.css";
 
 export default function DetailPage() {
-  const { collectionName, id } = useParams();
-  const navigate = useNavigate();
+  const { id } = useParams();
+  const location = useLocation();
+  const category = location.pathname.split("/")[1]; // e.g. "hotels"
   const [item, setItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
 
   useEffect(() => {
     const fetchItem = async () => {
-      const docRef = doc(db, collectionName, id);
+      setLoading(true);
+      const docRef = doc(db, category, id);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setItem({ id: docSnap.id, ...docSnap.data() });
+        setItem(docSnap.data());
       }
+      setLoading(false);
+      window.scrollTo(0, 0);
     };
     fetchItem();
-  }, [collectionName, id]);
+  }, [id, category]);
 
-  if (!item) return <Container sx={{ mt: 4 }}>Loading...</Container>;
+  const handleShare = () => {
+    if (navigator.share && item) {
+      navigator.share({
+        title: item.name,
+        text: `Check out ${item.name} in Mysuru`,
+        url: window.location.href
+      });
+    }
+  };
 
   return (
-    <Box>
+    <Container sx={{ mt: 4 }}>
       <Helmet>
-        <title>{`${item.name} | Mysurian`}</title>
-        <meta
-          name="description"
-          content={item.description || `Learn more about ${item.name} in Mysuru.`}
-        />
-        {item.imageURL && <meta property="og:image" content={item.imageURL} />}
-        <meta
-          property="og:url"
-          content={`https://mysurian09.web.app/${collectionName}/${item.id}`}
-        />
+        <title>{item ? item.name : "Loading..."} | {category.charAt(0).toUpperCase() + category.slice(1)} in Mysuru | Mysurian</title>
+        <meta name="description" content={item?.description || `Details about ${item?.name || ""}`} />
       </Helmet>
-      {/* Hero Image */}
-      <motion.div
-        style={{
-          position: "relative",
-          height: "80vh",
-          backgroundImage: `url(${item.imageURL})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1 }}
-      >
-        {/* Gradient Fade */}
-        <Box
-          sx={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "40%",
-            background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)",
-          }}
-        />
 
-        {/* Overlay Title */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          style={{
-            position: "absolute",
-            bottom: 30,
-            left: 0,
-            color: "#fff",
-            paddingLeft: "20px",
-            paddingRight: "20px",
-            maxWidth: "90%",
-          }}
-        >
-          <Typography variant="h3" fontWeight="bold">
-            {item.name}
+      {/* Breadcrumb */}
+      {/* <Breadcrumbs sx={{ mb: 2 }}>
+        <MuiLink component={Link} to="/" underline="hover" color="inherit">Home</MuiLink>
+        <MuiLink component={Link} to={`/${category}`} underline="hover" color="inherit">
+          {category.charAt(0).toUpperCase() + category.slice(1)}
+        </MuiLink>
+        <Typography color="text.primary">{item?.name || "Loading..."}</Typography>
+      </Breadcrumbs> */}
+
+      {/* Title & Actions */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" mb={2}>
+        {loading ? (
+          <Skeleton variant="text" width={250} height={40} />
+        ) : (
+          <Typography variant="h4" fontWeight="bold">{item.name}</Typography>
+        )}
+        <Box>
+          <IconButton onClick={handleShare}><ShareIcon /></IconButton>
+          <IconButton><FavoriteBorderIcon /></IconButton>
+        </Box>
+      </Box>
+
+      {/* Rating */}
+      {loading ? (
+        <Skeleton variant="text" width={100} height={30} />
+      ) : item?.rating && (
+        <Box display="flex" alignItems="center" mb={3}>
+          <Rating value={item.rating} precision={0.1} readOnly />
+          <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+            {item.rating} / 5
           </Typography>
-          {item.address && (
-            <Typography variant="h6" sx={{ opacity: 0.9 }}>
-              📍 {item.address}
-            </Typography>
-          )}
-        </motion.div>
+        </Box>
+      )}
 
-        {/* Back Button */}
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(-1)}
-          sx={{
-            position: "absolute",
-            top: 20,
-            left: 20,
-            zIndex: 10,
-            backgroundColor: "rgba(255,255,255,0.2)",
-            color: "#000",
-            borderRadius: "50px",
-            padding: "6px 16px",
-            textTransform: "none",
-            backdropFilter: "blur(6px)", 
-            width: "fit-content",
-            margin: "0",
-            paddingRight: "3px",
-            "&:hover": { backgroundColor: "rgba(255,255,255,0.4)" },
-          }}
-        >
-        </Button>
-      </motion.div>
-
-      {/* Details Section */}
-      <Container sx={{ mt: 6, mb: 6 }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
-          Overview
-        </Typography>
-        <Divider sx={{ mb: 3 }} />
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={6}>
-            {item.rating && (
-              <Typography variant="h6" gutterBottom>
-                ⭐ Rating: {item.rating}
-              </Typography>
-            )}
-            {item.contact && (
-              <Typography variant="h6" gutterBottom>
-                📞 Contact: {item.contact}
-              </Typography>
-            )}
-            {item.cuisine && (
-              <Typography variant="h6" gutterBottom>
-                🍽️ Cuisine: {item.cuisine}
-              </Typography>
-            )}
-            {item.date && (
-              <Typography variant="h6" gutterBottom>
-                📅 Date: {item.date}
-              </Typography>
-            )}
-          </Grid>
-          <Grid item xs={12} md={6}>
-            {item.description && (
-              <Typography variant="body1" sx={{ lineHeight: 1.8 }}>
-                {item.description}
-              </Typography>
-            )}
-          </Grid>
+      {/* Gallery */}
+      {loading ? (
+        <Grid container spacing={2} mb={3}>
+          {[1, 2, 3].map(i => (
+            <Grid item xs={12} sm={4} key={i}>
+              <Skeleton variant="rectangular" width="100%" height={200} />
+            </Grid>
+          ))}
         </Grid>
-      </Container>
-    </Box>
+      ) : item?.gallery && item.gallery.length > 0 && (
+        <>
+          <Grid container spacing={2} mb={3}>
+            {item.gallery.map((img, index) => (
+              <Grid item xs={12} sm={4} key={index}>
+                <Card onClick={() => { setPhotoIndex(index); setLightboxOpen(true); }} sx={{ cursor: "pointer" }}>
+                  <CardMedia component="img" height="200" image={img} alt={`${item.name} image ${index + 1}`} />
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+
+          {lightboxOpen && (
+            <Lightbox
+              mainSrc={item.gallery[photoIndex]}
+              nextSrc={item.gallery[(photoIndex + 1) % item.gallery.length]}
+              prevSrc={item.gallery[(photoIndex + item.gallery.length - 1) % item.gallery.length]}
+              onCloseRequest={() => setLightboxOpen(false)}
+              onMovePrevRequest={() =>
+                setPhotoIndex((photoIndex + item.gallery.length - 1) % item.gallery.length)
+              }
+              onMoveNextRequest={() =>
+                setPhotoIndex((photoIndex + 1) % item.gallery.length)
+              }
+            />
+          )}
+        </>
+      )}
+
+      {/* Description */}
+      {loading ? (
+        <Skeleton variant="text" width="100%" height={80} />
+      ) : item?.description && (
+        <Typography variant="body1" paragraph>{item.description}</Typography>
+      )}
+
+      {/* Contact Buttons */}
+      {loading ? (
+        <Skeleton variant="rectangular" width={200} height={40} sx={{ mb: 3 }} />
+      ) : (
+        <Box display="flex" gap={2} flexWrap="wrap" mb={3}>
+          {item.contact && (
+            <Button variant="contained" color="primary" startIcon={<CallIcon />} href={`tel:${item.contact}`}>
+              Call Now
+            </Button>
+          )}
+          {item.whatsapp && (
+            <Button variant="contained" color="success" startIcon={<WhatsAppIcon />} href={`https://wa.me/${item.whatsapp}`}>
+              WhatsApp
+            </Button>
+          )}
+          {item.website && (
+            <Button variant="contained" color="info" startIcon={<LanguageIcon />} href={item.website} target="_blank">
+              Visit Website
+            </Button>
+          )}
+        </Box>
+      )}
+
+      {/* Address */}
+      {loading ? (
+        <Skeleton variant="text" width="60%" height={30} />
+      ) : item?.address && (
+        <>
+          <Typography variant="h6" gutterBottom>Address</Typography>
+          <Typography variant="body2" paragraph>{item.address}</Typography>
+        </>
+      )}
+
+      {/* Google Map */}
+      {loading ? (
+        <Skeleton variant="rectangular" width="100%" height={300} />
+      ) : item?.mapEmbed && (
+        <Box sx={{ mb: 4 }}>
+          <iframe
+            src={item.mapEmbed}
+            width="100%"
+            height="300"
+            style={{ border: 0 }}
+            allowFullScreen=""
+            loading="lazy"
+            title="Google Map"
+          ></iframe>
+        </Box>
+      )}
+
+      {/* User Reviews (placeholder) */}
+      <Box mb={4}>
+        <Typography variant="h6" gutterBottom>User Reviews</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Reviews coming soon...
+        </Typography>
+      </Box>
+
+      {/* Nearby Attractions (placeholder) */}
+      <Box mb={4}>
+        <Typography variant="h6" gutterBottom>Nearby Attractions</Typography>
+        <Typography variant="body2" color="text.secondary">
+          We'll soon show nearby attractions around this location.
+        </Typography>
+      </Box>
+    </Container>
   );
 }

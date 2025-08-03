@@ -17,33 +17,48 @@ export default function Home() {
 
   useEffect(() => {
     const fetchFeatured = async () => {
-      // Example: Fetch events as local events
-      // You can also merge data from multiple collections if needed
       const eventsCollection = collection(db, "events");
       const snapshot = await getDocs(eventsCollection);
       const list = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        category: "events" // Add category for navigation
+        category: "events"
       }));
-      setFeatured(list.slice(0, 3)); // Only first 3 for featured
+      setFeatured(list.slice(0, 3));
     };
     fetchFeatured();
   }, []);
 
   return (
     <Container sx={{ mt: 10 }}>
-      <Typography variant="h6" pb={2} sx={{ textAlign: "center", opacity: 0.6 }}>
+      <Typography
+        variant="h6"
+        pb={2}
+        sx={{ textAlign: "center", opacity: 0.6 }}
+      >
         Local Events
       </Typography>
       <Grid container spacing={3} sx={{ justifyContent: "center" }}>
         {featured.map(item => (
-          <Grid item xs={12} sm={6} md={4} key={item.id}>
+          <Grid
+            item
+            xs={12}
+            sm={6}
+            md={4}
+            key={item.id}
+            sx={{ display: "flex", justifyContent: "center" }}
+          >
             <Card
-              sx={{ borderRadius: 3, boxShadow: 0, cursor: "pointer",
-                maxWidth: 350, maxHeight: 300,
+              sx={{
+                borderRadius: 3,
+                boxShadow: 0,
+                cursor: "pointer",
+                maxWidth: 300, // fixed width for uniform look
                 "&:hover": { boxShadow: 0, transform: "scale(1.01)" },
                 transition: "all 0.3s ease-in-out",
+                display: "flex",
+                flexDirection: "column",
+                height: "100%"
               }}
               onClick={() => navigate(`/${item.category}/${item.id}`)}
             >
@@ -53,10 +68,13 @@ export default function Home() {
                   height="200"
                   image={item.imageURL}
                   alt={item.name}
-                  
+                  sx={{
+                    objectFit: "cover",
+                    width: "100%"
+                  }}
                 />
               )}
-              <CardContent>
+              <CardContent sx={{ flexGrow: 1 }}>
                 <Typography variant="h6">{item.name}</Typography>
                 {item.address && (
                   <Typography variant="body2" color="text.secondary">
@@ -64,7 +82,18 @@ export default function Home() {
                   </Typography>
                 )}
                 {item.description && (
-                  <Typography variant="body2">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2, // limit to 2 lines
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "normal",
+                      lineHeight: 1.4
+                    }}
+                  >
                     ⭐ {item.description}
                   </Typography>
                 )}
