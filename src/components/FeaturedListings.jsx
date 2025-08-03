@@ -41,7 +41,7 @@ export default function Home() {
           <Grid item xs={12} sm={6} md={4} key={item.id}>
             <Card
               sx={{ borderRadius: 3, boxShadow: 0, cursor: "pointer",
-                width:350, height: 300, 
+                maxWidth: 350, maxHeight: 300, 
                 "&:hover": { boxShadow: 0, transform: "scale(1.01)" },
                 transition: "all 0.3s ease-in-out",
               }}

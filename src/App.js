@@ -8,11 +8,13 @@ import Layout from './components/Layout';
 import Restaurants from './pages/Restaurants';
 import Events from './pages/Events';
 import DetailPage from './pages/DetailPage';
+import ScrollToTop from './components/ScrollToTop';
 
 function App() {
   return (
     <Router>
       <Navbar />
+       <ScrollToTop />
       <Layout>
       <Routes>
         <Route path="/" element={<Home />} />

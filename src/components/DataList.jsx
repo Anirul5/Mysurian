@@ -39,10 +39,10 @@ export default function DataList({ title, collectionName, fields }) {
 
   return (
     <Container sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h4" gutterBottom sx={{ textAlign: "center", mb: 4 }}>
         {title}
       </Typography>
-      <Grid container spacing={3}>
+      <Grid container spacing={3} sx={{ justifyContent: "center" }}>
         {items.map(item => (
           <Grid item xs={12} sm={6} md={4} key={item.id}>
             <Card sx={{ borderRadius: 3, boxShadow: 3, cursor: "pointer" }}
