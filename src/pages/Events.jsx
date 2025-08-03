@@ -1,5 +1,6 @@
 import React from "react";
 import DataList from "../components/DataList";
+import { Helmet } from "react-helmet-async";
 
 export default function Events() {
   return (
