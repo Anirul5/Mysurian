@@ -6,9 +6,9 @@ const { getFirestore, collection, getDocs } = require('firebase/firestore');
 
 // Firebase config (use same as firebaseConfig.js)
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
+  apiKey: "AIzaSyANMLjscPssWyu6fJR15JcP2AL_8Xwocv4",
+  authDomain: "mysurian09.firebaseapp.com",
+  projectId: "mysurian09",
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
