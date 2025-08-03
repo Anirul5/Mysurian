@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 const categories = [
   { title: "Hotels", icon: <HotelIcon fontSize="large" />, color: "#6A1B9A" },
   { title: "Gyms", icon: <FitnessCenterIcon fontSize="large" />, color: "#FBC02D" },
-  { title: "Food", icon: <RestaurantIcon fontSize="large" />, color: "#D32F2F" },
+  { title: "Restaurants", icon: <RestaurantIcon fontSize="large" />, color: "#D32F2F" },
   { title: "Events", icon: <EventIcon fontSize="large" />, color: "#0288D1" },
 ];
 

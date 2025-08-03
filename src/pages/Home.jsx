@@ -42,7 +42,7 @@ export default function Home() {
       </Box>
       </Container>
       <Container maxWidth="lg">
-      <Box sx={{ mt: 10 }}>
+      <Box sx={{ mt: 10 }} >
         <QuickCategories onCategoryClick={handleCategoryClick} />
       </Box>
       </Container>

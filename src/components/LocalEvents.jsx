@@ -1,87 +1,78 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 import {
-  Box,
+  Container,
+  Typography,
+  Grid,
   Card,
   CardContent,
-  Typography,
-  CardMedia,
-  Chip,
-  CardActionArea,
+  CardMedia
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
-const events = [
-  {
-    title: "Mysuru Dasara Festival",
-    date: "Oct 1, 2025",
-    image: "https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=1600&q=80",
-  },
-  {
-    title: "Yoga at Chamundi Hills",
-    date: "Aug 15, 2025",
-    image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    title: "Street Food Carnival",
-    date: "Sep 10, 2025",
-    image: "https://images.unsplash.com/photo-1559305616-3f99cd43e353?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    title: "Mysuru Marathon",
-    date: "Nov 5, 2025",
-    image: "https://images.unsplash.com/photo-1508609349937-5ec4ae374ebf?auto=format&fit=crop&w=800&q=80",
-  },
-];
+export default function Home() {
+  const [featured, setFeatured] = useState([]);
+  const navigate = useNavigate();
 
-export default function LocalEvents({ onEventClick }) {
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      // Example: Fetch events as local events
+      // You can also merge data from multiple collections if needed
+      const eventsCollection = collection(db, "events");
+      const snapshot = await getDocs(eventsCollection);
+      const list = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        category: "events" // Add category for navigation
+      }));
+      setFeatured(list.slice(0, 3)); // Only first 3 for featured
+    };
+    fetchFeatured();
+  }, []);
+
   return (
-    <Box sx={{ mt: 10 }}>
-        <Typography variant="h6" pb={2} sx={{ textAlign: "center", opacity: 0.6 }}>
-            Local events and offers
-        </Typography>
-
-      <Box
-        sx={{
-          display: "flex",
-          overflowX: "auto",
-          gap: 2,
-          pb: 1,
-          "&::-webkit-scrollbar": { display: "none" },
-        }}
-      >
-        {events.map((event, index) => (
-          <Card
-            key={index}
-            sx={{
-              minWidth: 250,
-              borderRadius: "16px",
-              boxShadow: 0,
-              "&:hover": { boxShadow: 0, transform: "scale(1.01)" },
-              transition: "all 0.3s ease-in-out",
-              flex: "0 0 auto",
-            }}
-          >
-            <CardActionArea onClick={() => onEventClick && onEventClick(event)}>
-              <CardMedia
-                component="img"
-                height="150"
-                image={event.image}
-                alt={event.title}
-              />
-              <CardContent>
-                <Chip
-                  label={event.date}
-                  color="primary"
-                  size="small"
-                  sx={{ mb: 1 }}
+    <Container sx={{ mt: 10 }}>
+      <Typography variant="h6" pb={2} sx={{ textAlign: "center", opacity: 0.6 }}>
+        Local Events
+      </Typography>
+      <Grid container spacing={3} sx={{ justifyContent: "center" }}>
+        {featured.map(item => (
+          <Grid item xs={12} sm={6} md={4} key={item.id}>
+            <Card
+              sx={{ borderRadius: 3, boxShadow: 0, cursor: "pointer",
+                width:350, height: 300, 
+                "&:hover": { boxShadow: 0, transform: "scale(1.01)" },
+                transition: "all 0.3s ease-in-out",
+              }}
+              onClick={() => navigate(`/${item.category}/${item.id}`)}
+            >
+              {item.imageURL && (
+                <CardMedia
+                  component="img"
+                  height="200"
+                  image={item.imageURL}
+                  alt={item.name}
+                  
                 />
-                <Typography variant="h6" noWrap>
-                  {event.title}
-                </Typography>
+              )}
+              <CardContent>
+                <Typography variant="h6">{item.name}</Typography>
+                {item.address && (
+                  <Typography variant="body2" color="text.secondary">
+                    📍 {item.address}
+                  </Typography>
+                )}
+                {item.description && (
+                  <Typography variant="body2">
+                    ⭐ {item.description}
+                  </Typography>
+                )}
               </CardContent>
-            </CardActionArea>
-          </Card>
+            </Card>
+          </Grid>
         ))}
-      </Box>
-    </Box>
+      </Grid>
+    </Container>
   );
 }

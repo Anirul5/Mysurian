@@ -22,6 +22,12 @@ export default function Navbar() {
         <Button color="inherit" component={Link} to="/hotels">
           Hotels
         </Button>
+        <Button color="inherit" component={Link} to="/restaurants">
+          Restaurants
+        </Button> 
+        <Button color="inherit" component={Link} to="/events">
+          Events     
+        </Button>
       </Toolbar>
     </AppBar>
   );
