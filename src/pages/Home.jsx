@@ -6,7 +6,7 @@ import FeaturedListings from '../components/FeaturedListings';
 import LocalEvents from '../components/LocalEvents';
 import Testimonials from '../components/Testimonials';
 import CallToAction from '../components/CallToAction';
-import Footer from '../components/Footer';
+import { Helmet } from 'react-helmet-async';
 
 const features = [
   { title: "Gyms", description: "Find the best fitness centers in Mysuru", link: "/gyms" },
@@ -28,6 +28,20 @@ export default function Home() {
 
   return (
     <Container sx={{ mt: 4 }}>
+       <Helmet>
+        <title>Mysurian - Discover Mysuru Like Never Before</title>
+        <meta
+          name="description"
+          content="Uncover the best places, events, and experiences in Mysuru with Mysurian. Explore hotels, restaurants, gyms, and more."
+        />
+        <meta property="og:title" content="Mysurian - Discover Mysuru" />
+        <meta
+          property="og:description"
+          content="Uncover the best places, events, and experiences in Mysuru."
+        />
+        <meta property="og:image" content="/og-image.jpg" />
+        <meta property="og:url" content="https://mysurian09.web.app" />
+      </Helmet>
       <Box textAlign="center" mb={5}>
         <Typography variant="h1" gutterBottom borderTop={2} borderColor="primary.main" pt={10} pb={2}>
           Discover Mysuru Like Never Before

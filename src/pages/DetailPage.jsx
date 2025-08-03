@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { motion } from "framer-motion";
+import { Helmet } from "react-helmet-async";
 
 export default function DetailPage() {
   const { collectionName, id } = useParams();
@@ -33,6 +34,18 @@ export default function DetailPage() {
 
   return (
     <Box>
+      <Helmet>
+        <title>{`${item.name} | Mysurian`}</title>
+        <meta
+          name="description"
+          content={item.description || `Learn more about ${item.name} in Mysuru.`}
+        />
+        {item.imageURL && <meta property="og:image" content={item.imageURL} />}
+        <meta
+          property="og:url"
+          content={`https://mysurian09.web.app/${collectionName}/${item.id}`}
+        />
+      </Helmet>
       {/* Hero Image */}
       <motion.div
         style={{
