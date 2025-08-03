@@ -9,6 +9,7 @@ import Restaurants from './pages/Restaurants';
 import Events from './pages/Events';
 import DetailPage from './pages/DetailPage';
 import ScrollToTop from './components/ScrollToTop';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -23,7 +24,7 @@ function App() {
         <Route path="/restaurants" element={<Restaurants />} />
         <Route path="/events" element={<Events />} />
         <Route path="/:collectionName/:id" element={<DetailPage />} />
-
+        <Route path="*" element={<NotFound />} />
       </Routes>
       </Layout>
     </Router>

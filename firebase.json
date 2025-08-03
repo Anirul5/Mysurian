@@ -15,5 +15,11 @@
     "predeploy": [
       "node check-branch.js"
     ]
-  }
+  },
+  "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
 }
