@@ -14,12 +14,20 @@
     ],
     "predeploy": [
       "node check-branch.js"
-    ]
-  },
-  "rewrites": [
+    ],
+     "headers": [
+      {
+        "source": "**/*.html",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      }
+    ],
+    "rewrites": [
       {
         "source": "**",
         "destination": "/index.html"
       }
     ]
+  }
 }
