@@ -67,15 +67,11 @@ export default function DataList({ title, collectionName, fields, data }) {
       )}
 
       {/* Search Bar */}
-      <Container maxWidth="md">
+      {/* <Container maxWidth="md">
         <Box sx={{ mt: 5, mb: 5 }}>
-          <SearchBar
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={`Search ${title || collectionName}...`}
-          />
+          <SearchBar showDropdown={false} />
         </Box>
-      </Container>
+      </Container> */}
 
       {/* Card Grid */}
       <Grid

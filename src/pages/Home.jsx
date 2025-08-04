@@ -68,45 +68,7 @@ export default function Home() {
   }, []);
 
   // Hybrid Search
-  useEffect(() => {
-    if (!searchTerm) {
-      setResults([]);
-      return;
-    }
-
-    const matchedCategories = categoriesList.filter(cat =>
-      cat.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const matchedPreloaded = preloadedItems.filter(item =>
-      item.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    setResults([...matchedCategories, ...matchedPreloaded]);
-
-    if (searchTerm.length > 2) {
-      const fetchLazyResults = async () => {
-        const categories = ["hotels", "gyms", "restaurants", "events", "default"];
-        let allMatches = [];
-
-        for (let category of categories) {
-          const snapshot = await getDocs(collection(db, category));
-          const matches = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data(), category, type: "listing" }))
-            .filter(item => item.name?.toLowerCase().includes(searchTerm.toLowerCase()));
-          allMatches = [...allMatches, ...matches];
-        }
-
-        const combined = [...matchedCategories, ...allMatches];
-        const unique = combined.filter(
-          (v, i, a) =>
-            a.findIndex(t => (t.id === v.id && t.category === v.category && t.type === v.type)) === i
-        );
-        setResults(unique);
-      };
-      fetchLazyResults();
-    }
-  }, [searchTerm, preloadedItems]);
+  <SearchBar showDropdown={true} />
 
   const handleSelect = (item) => {
     if (item.type === "category") {

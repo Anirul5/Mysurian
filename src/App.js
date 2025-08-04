@@ -11,6 +11,7 @@ import DetailPage from './pages/DetailPage';
 import ScrollToTop from './components/ScrollToTop';
 import NotFound from './pages/NotFound';
 import { HelmetProvider } from 'react-helmet-async';
+import SearchResults from './pages/SearchResults';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/restaurants" element={<Restaurants />} />
           <Route path="/events" element={<Events />} />
           <Route path="/:collectionName/:id" element={<DetailPage />} />
+          <Route path="/search" element={<SearchResults />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         </Layout>
