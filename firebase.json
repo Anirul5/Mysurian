@@ -6,7 +6,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": "build",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -15,7 +15,7 @@
     "predeploy": [
       "node check-branch.js"
     ],
-     "headers": [
+    "headers": [
       {
         "source": "**/*.html",
         "headers": [
@@ -25,7 +25,7 @@
     ],
     "rewrites": [
       {
-        "source": "**",
+        "source": "!{/sitemap.xml,/robots.txt}",
         "destination": "/index.html"
       }
     ]

@@ -12,6 +12,9 @@ import ScrollToTop from './components/ScrollToTop';
 import NotFound from './pages/NotFound';
 import { HelmetProvider } from 'react-helmet-async';
 import SearchResults from './pages/SearchResults';
+import AdminLogin from "./pages/AdminLogin";
+import AdminPage from "./pages/AdminPage";
+import ManageListings from "./pages/ManageListings";
 
 function App() {
   return (
@@ -21,6 +24,9 @@ function App() {
         <ScrollToTop />
         <Layout>
         <Routes>
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/:categoryId/listings" element={<ManageListings />} />
           <Route path="/" element={<Home />} />
           <Route path="/gyms" element={<Gyms />} />
           <Route path="/hotels" element={<Hotels />} />
