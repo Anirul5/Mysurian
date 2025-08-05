@@ -6,36 +6,34 @@ import {
   List,
   ListItem,
   ListItemText,
-  Chip
+  Chip,
+  Box,
+  Stack
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useNavigate } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import { categoryColors } from "../utils/categoryColors"; 
 
 function SearchBar({ placeholder = "Search categories or places...", showDropdown = true }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState([]);
   const [preloadedItems, setPreloadedItems] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [categories, setCategories] = useState([]);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  const categoriesList = [
-    { name: "Hotel", category: "hotels", type: "category" },
-    { name: "Gyms", category: "gyms", type: "category" },
-    { name: "Restaurants", category: "restaurants", type: "category" },
-    { name: "Events", category: "events", type: "category" }
-  ];
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const snapshot = await getDocs(collection(db, "categories"));
+      const catList = snapshot.docs.map(doc => doc.id);
+      setCategories(["all", ...catList]);
+    };
+    fetchCategories();
+  }, []);
 
-  const categoryColors = {
-    hotels: "primary",
-    gyms: "success",
-    restaurants: "warning",
-    events: "secondary",
-    default: "default"
-  };
-
-  // Close dropdown on outside click
   useEffect(() => {
     if (!showDropdown) return;
     const handleClickOutside = (event) => {
@@ -47,14 +45,12 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDropdown]);
 
-  // Preload for dropdown
   useEffect(() => {
     if (!showDropdown) return;
     const fetchFeatured = async () => {
-      const categories = ["hotels", "gyms", "restaurants", "events", "default"];
       let allData = [];
-
-      for (let category of categories) {
+      const categoriesToUse = selectedCategory === "all" ? categories.slice(1) : [selectedCategory];
+      for (let category of categoriesToUse) {
         const snapshot = await getDocs(collection(db, category));
         let list = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -68,9 +64,8 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
       setPreloadedItems(allData);
     };
     fetchFeatured();
-  }, [showDropdown]);
+  }, [showDropdown, selectedCategory, categories]);
 
-  // Search logic
   useEffect(() => {
     if (!showDropdown) return;
 
@@ -79,34 +74,41 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
       return;
     }
 
-    const matchedCategories = categoriesList.filter(cat =>
-      cat.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
     const matchedPreloaded = preloadedItems.filter(item =>
-      item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.keywords?.some(k => k.toLowerCase().includes(searchTerm.toLowerCase()))
+      Object.entries(item).some(([key, val]) => {
+        if (typeof val === "string") {
+          return val.toLowerCase().includes(searchTerm.toLowerCase());
+        }
+        if (Array.isArray(val)) {
+          return val.some(v => typeof v === "string" && v.toLowerCase().includes(searchTerm.toLowerCase()));
+        }
+        return false;
+      })
     );
-
-    setResults([...matchedCategories, ...matchedPreloaded]);
 
     if (searchTerm.length > 2) {
       const fetchLazyResults = async () => {
-        const categories = ["hotels", "gyms", "restaurants", "events", "default"];
+        const categoriesToUse = selectedCategory === "all" ? categories.slice(1) : [selectedCategory];
         let allMatches = [];
-
-        for (let category of categories) {
+        for (let category of categoriesToUse) {
           const snapshot = await getDocs(collection(db, category));
           const matches = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data(), category, type: "listing" }))
             .filter(item =>
-              item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              item.keywords?.some(k => k.toLowerCase().includes(searchTerm.toLowerCase()))
+              Object.entries(item).some(([key, val]) => {
+                if (typeof val === "string") {
+                  return val.toLowerCase().includes(searchTerm.toLowerCase());
+                }
+                if (Array.isArray(val)) {
+                  return val.some(v => typeof v === "string" && v.toLowerCase().includes(searchTerm.toLowerCase()));
+                }
+                return false;
+              })
             );
           allMatches = [...allMatches, ...matches];
         }
 
-        const combined = [...matchedCategories, ...allMatches];
+        const combined = [...matchedPreloaded, ...allMatches];
         const unique = combined.filter(
           (v, i, a) =>
             a.findIndex(t => (t.id === v.id && t.category === v.category && t.type === v.type)) === i
@@ -114,8 +116,10 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
         setResults(unique);
       };
       fetchLazyResults();
+    } else {
+      setResults(matchedPreloaded);
     }
-  }, [searchTerm, preloadedItems, showDropdown]);
+  }, [searchTerm, preloadedItems, showDropdown, selectedCategory, categories]);
 
   const handleSelect = (item) => {
     if (item.type === "category") {
@@ -127,16 +131,31 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
     setResults([]);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (searchTerm.trim() !== "") {
-      navigate(`/search?query=${encodeURIComponent(searchTerm)}`);
+      await addDoc(collection(db, "searchLogs"), {
+        term: searchTerm.trim(),
+        category: selectedCategory,
+        timestamp: serverTimestamp(),
+      });
+      navigate(`/search?query=${encodeURIComponent(searchTerm.trim())}`);
       setSearchTerm("");
     }
   };
 
   return (
     <div style={{ position: "relative" }} ref={dropdownRef}>
+      <Stack direction="row" spacing={1} mb={1} flexWrap="wrap">
+        {categories.map((cat) => (
+          <Chip
+            key={cat}
+            label={cat}
+            onClick={() => setSelectedCategory(cat)}
+            color={selectedCategory === cat ? "secondary" : "default"}
+          />
+        ))}
+      </Stack>
       <form onSubmit={handleSubmit}>
         <TextField
           fullWidth
@@ -154,7 +173,6 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
           }}
         />
       </form>
-
       {showDropdown && results.length > 0 && (
         <Paper
           sx={{

@@ -2,56 +2,61 @@ import React, { useEffect, useState } from "react";
 import { useLocation, Link as RouterLink } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import { Container, Typography, Grid, Card, CardMedia, CardContent, Skeleton } from "@mui/material";
-
-const keywordCategoryMap = {
-  hotel: ["hotels", "restaurants"],
-  stay: ["hotels"],
-  restaurant: ["restaurants", "hotels"],
-  resto: ["restaurants", "hotels"],
-  food: ["restaurants", "events"],
-  gym: ["gyms"],
-  fitness: ["gyms"]
-};
+import {
+  Container,
+  Typography,
+  Grid,
+  Card,
+  CardMedia,
+  CardContent,
+  Skeleton,
+  Chip
+} from "@mui/material";
 
 export default function SearchResults() {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const searchQuery = queryParams.get("query")?.toLowerCase() || "";
 
+  const [categories, setCategories] = useState([]);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // 🔄 Get all category IDs from Firestore
   useEffect(() => {
-    if (!searchQuery) return;
+    const fetchCategories = async () => {
+      const snapshot = await getDocs(collection(db, "categories"));
+      const catList = snapshot.docs.map((doc) => doc.id);
+      setCategories(catList);
+    };
+    fetchCategories();
+  }, []);
+
+  // 🔍 Fetch search results across all dynamic categories
+  useEffect(() => {
+    if (!searchQuery || categories.length === 0) return;
 
     const fetchResults = async () => {
       setLoading(true);
-
-      // Determine categories to search
-      let categoriesToSearch = ["hotels", "gyms", "restaurants", "events"];
-      for (const keyword in keywordCategoryMap) {
-        if (searchQuery.includes(keyword)) {
-          categoriesToSearch = Array.from(new Set([...categoriesToSearch, ...keywordCategoryMap[keyword]]));
-        }
-      }
-
       let allMatches = [];
-      for (let category of categoriesToSearch) {
+
+      for (let category of categories) {
         const snapshot = await getDocs(collection(db, category));
         const matches = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data(), category }))
-          .filter(item => {
-            const fieldsToCheck = [
-              item.name,
-              item.description,
-              Array.isArray(item.keywords) ? item.keywords.join(" ") : item.keywords,
-              item.address
-            ];
-            return fieldsToCheck.some(field =>
-              field?.toLowerCase().includes(searchQuery)
-            );
-          });
+          .map((doc) => ({ id: doc.id, ...doc.data(), category }))
+          .filter((item) =>
+            Object.entries(item).some(([key, val]) => {
+              if (typeof val === "string") {
+                return val.toLowerCase().includes(searchQuery);
+              }
+              if (Array.isArray(val)) {
+                return val.some(
+                  (v) => typeof v === "string" && v.toLowerCase().includes(searchQuery)
+                );
+              }
+              return false;
+            })
+          );
         allMatches = [...allMatches, ...matches];
       }
 
@@ -60,7 +65,7 @@ export default function SearchResults() {
     };
 
     fetchResults();
-  }, [searchQuery]);
+  }, [searchQuery, categories]);
 
   return (
     <Container sx={{ mt: 4 }}>
@@ -71,10 +76,10 @@ export default function SearchResults() {
       {loading ? (
         <Grid container spacing={2}>
           {Array.from({ length: 6 }).map((_, idx) => (
-            <Grid item xs={12} sm={6} md={4} key={idx} minWidth="200px" minHeight="120px">
-              <Skeleton variant="rectangular" width="100%" height={200} sx={{ borderRadius: 2 }}  minWidth="120px" minHeight="120px"/>
-              <Skeleton variant="text" width="80%" height={30} minWidth="120px" />
-              <Skeleton variant="text" width="60%" height={20} minWidth="100px" />
+            <Grid item xs={12} sm={6} md={4} key={idx}>
+              <Skeleton variant="rectangular" width="100%" height={200} sx={{ borderRadius: 2 }} />
+              <Skeleton variant="text" width="80%" height={30} />
+              <Skeleton variant="text" width="60%" height={20} />
             </Grid>
           ))}
         </Grid>
@@ -84,7 +89,16 @@ export default function SearchResults() {
         <Grid container spacing={2}>
           {results.map((item, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
-              <Card component={RouterLink} to={`/${item.category}/${item.id}`} sx={{ textDecoration: "none" }}>
+              <Card
+                component={RouterLink}
+                to={`/${item.category}/${item.id}`}
+                sx={{
+                  textDecoration: "none",
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column"
+                }}
+              >
                 <CardMedia
                   component="img"
                   height="200"
@@ -92,10 +106,26 @@ export default function SearchResults() {
                   alt={item.name}
                 />
                 <CardContent>
-                  <Typography variant="h6">{item.name}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+                  <Typography variant="h6" gutterBottom>
+                    {item.name}
                   </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {item.description?.slice(0, 80)}...
+                  </Typography>
+                  <Chip
+                    label={item.category}
+                    color="secondary"
+                    size="small"
+                    sx={{ mt: 1, mr: 1 }}
+                  />
+                  {item.date && (
+                    <Chip
+                      label={`Uploaded: ${item.date}`}
+                      size="small"
+                      sx={{ mt: 1 }}
+                      variant="outlined"
+                    />
+                  )}
                 </CardContent>
               </Card>
             </Grid>
@@ -105,6 +135,3 @@ export default function SearchResults() {
     </Container>
   );
 }
-
-
-

@@ -15,6 +15,8 @@ import SearchResults from './pages/SearchResults';
 import AdminLogin from "./pages/AdminLogin";
 import AdminPage from "./pages/AdminPage";
 import ManageListings from "./pages/ManageListings";
+import ListingForm from "./pages/ListingForm";
+import SchemaEditor from "./pages/SchemaEditor";
 
 function App() {
   return (
@@ -27,6 +29,9 @@ function App() {
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/:categoryId/listings" element={<ManageListings />} />
+          <Route path="/admin/:categoryId/listings/new" element={<ListingForm />} /> {/* NOT SchemaEditor */}
+          <Route path="/admin/:categoryId/listings/:listingId/edit" element={<ListingForm />} />
+          <Route path="/admin/:categoryId/schema" element={<SchemaEditor />} />
           <Route path="/" element={<Home />} />
           <Route path="/gyms" element={<Gyms />} />
           <Route path="/hotels" element={<Hotels />} />
