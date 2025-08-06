@@ -1,11 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  AppBar, Toolbar, IconButton, Typography, Box, Button, Drawer,
+  AppBar, Toolbar, IconButton, Typography, Box, Button, Drawer, Menu, MenuItem,
   List, ListItem, ListItemButton, ListItemText, TextField, InputAdornment
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import SearchIcon from "@mui/icons-material/Search";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebaseConfig"; // adjust if needed
 
 const navLinks = [
   { label: "Home", path: "/" },
@@ -17,14 +20,23 @@ const navLinks = [
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false); // mobile search toggle
+  const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const snapshot = await getDocs(collection(db, "categories"));
+      const list = snapshot.docs.map((doc) => doc.id);
+      setCategories(
+        list);
+    };
+    fetchCategories();
+  }, []);
 
+  const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
@@ -32,6 +44,12 @@ export default function Header() {
       setSearchTerm("");
       setSearchOpen(false);
     }
+  };
+
+  const handleCategoryClick = (category) => {
+    navigate(category);
+    setAnchorEl(null);
+    setMobileOpen(false);
   };
 
   const drawer = (
@@ -44,6 +62,21 @@ export default function Header() {
             </ListItemButton>
           </ListItem>
         ))}
+        <ListItem disablePadding>
+          <ListItemButton onClick={() => navigate("/categories")}>
+            <ListItemText primary="All Categories" />
+          </ListItemButton>
+        </ListItem>
+        {categories.map((cat) => (
+          <ListItem key={cat} disablePadding>
+            <ListItemButton onClick={() => handleCategoryClick(`category/${cat}`)}>
+              <ListItemText primary={cat.replaceAll("_", " ")
+              .split(" ")
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ")} />
+            </ListItemButton>
+          </ListItem>
+        ))}
       </List>
     </Box>
   );
@@ -52,24 +85,24 @@ export default function Header() {
     <>
       <AppBar position="static" color="primary" sx={{ boxShadow: 0 }}>
         <Toolbar>
-          {/* Logo / Brand */}
+          {/* Logo */}
           <Box sx={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
-          <Typography
-            variant="h6"
-            component={RouterLink}
-            to="/"
-            sx={{
-              textDecoration: "none",
-              color: "inherit",
-              fontWeight: "bold",
-              mr: 4
-            }}
-          >
-            Mysurian
-          </Typography>
+            <Typography
+              variant="h6"
+              component={RouterLink}
+              to="/"
+              sx={{
+                textDecoration: "none",
+                color: "inherit",
+                fontWeight: "bold",
+                mr: 4
+              }}
+            >
+              Mysurian
+            </Typography>
           </Box>
 
-          {/* Desktop Search Bar */}
+          {/* Desktop Search */}
           <Box
             component="form"
             onSubmit={handleSearchSubmit}
@@ -104,7 +137,7 @@ export default function Header() {
             />
           </Box>
 
-          {/* Desktop Links */}
+          {/* Desktop Nav Links */}
           <Box sx={{ display: { xs: "none", md: "flex" }, gap: 1 }}>
             {navLinks.map((item) => (
               <Button
@@ -116,9 +149,35 @@ export default function Header() {
                 {item.label}
               </Button>
             ))}
+
+            {/* Categories Dropdown */}
+            <Button
+              color="inherit"
+              onClick={(e) => setAnchorEl(e.currentTarget)}
+              endIcon={<ArrowDropDownIcon />}
+            >
+              Categories
+            </Button>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={() => setAnchorEl(null)}
+            >
+              <MenuItem onClick={() => handleCategoryClick("/categories")}>
+                All Categories
+              </MenuItem>
+              {categories.map((cat) => (
+                <MenuItem key={cat} onClick={() => handleCategoryClick(`/category/${cat}`)}>
+                  {cat.replaceAll("_", " ")
+        .split(" ")
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ")}
+                </MenuItem>
+              ))}
+            </Menu>
           </Box>
 
-          {/* Mobile Search Icon */}
+          {/* Mobile Icons */}
           <IconButton
             color="inherit"
             sx={{ display: { xs: "block", md: "none" }, ml: "auto" }}
@@ -126,8 +185,6 @@ export default function Header() {
           >
             <SearchIcon />
           </IconButton>
-
-          {/* Mobile Hamburger Menu */}
           <IconButton
             color="inherit"
             sx={{ display: { xs: "block", md: "none" } }}

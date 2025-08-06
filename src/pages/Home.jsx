@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Container, Typography, Box, Paper, List, ListItem, ListItemText, Chip } from '@mui/material';
+import {
+  Container, Typography, Box, Paper, List, ListItem, ListItemText, Chip
+} from '@mui/material';
 import SearchBar from "../components/SearchBar";
 import QuickCategories from "../components/QuickCategories";
 import FeaturedListings from '../components/FeaturedListings';
@@ -10,20 +12,17 @@ import { Helmet } from 'react-helmet-async';
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useNavigate } from "react-router-dom";
+import FeaturedTopics from '../components/FeaturedTopics';
+import EyesAreLookingAt from '../components/EyesAreLookingAt';
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState([]);
   const [preloadedItems, setPreloadedItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [events, setEvents] = useState([]);
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
-
-  const categoriesList = [
-    { name: "Hotels", category: "hotels", type: "category" },
-    { name: "Gyms", category: "gyms", type: "category" },
-    { name: "Restaurants", category: "restaurants", type: "category" },
-    { name: "Events", category: "events", type: "category" }
-  ];
 
   const categoryColors = {
     hotels: "primary",
@@ -33,7 +32,6 @@ export default function Home() {
     default: "default"
   };
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -44,31 +42,46 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Preload some featured/random items
+  // Fetch categories from Firestore
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const snapshot = await getDocs(collection(db, "categories"));
+      const categoryList = snapshot.docs.map(doc => ({
+        name: doc.data().name,
+        category: doc.id,
+        type: "category"
+      }));
+      setCategories(categoryList);
+    };
+    fetchCategories();
+  }, []);
+
+  // Fetch featured listings
   useEffect(() => {
     const fetchFeatured = async () => {
-      const categories = ["hotels", "gyms", "restaurants", "events", "default"];
-      let allData = [];
-
-      for (let category of categories) {
-        const snapshot = await getDocs(collection(db, category));
-        let list = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          category,
-          type: "listing"
-        }));
-        // Shuffle and take a few items
-        list.sort(() => Math.random() - 0.5);
-        allData = [...allData, ...list.slice(0, 3)];
-      }
-      setPreloadedItems(allData);
+      const snapshot = await getDocs(collection(db, "featured"));
+      const list = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        type: "listing"
+      }));
+      setPreloadedItems(list);
     };
     fetchFeatured();
   }, []);
 
-  // Hybrid Search
-  <SearchBar showDropdown={true} />
+  // Fetch events
+  useEffect(() => {
+    const fetchEvents = async () => {
+      const snapshot = await getDocs(collection(db, "events"));
+      const eventList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setEvents(eventList);
+    };
+    fetchEvents();
+  }, []);
 
   const handleSelect = (item) => {
     if (item.type === "category") {
@@ -112,52 +125,28 @@ export default function Home() {
         {results.length > 0 && (
           <Paper
             sx={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              zIndex: 10,
-              mt: 1,
-              borderRadius: "16px",
-              overflow: "hidden",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
+              position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10, mt: 1,
+              borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
             }}
           >
             <List disablePadding>
               {results.map((item, idx) => (
                 <ListItem
-                  button
-                  key={idx}
-                  onClick={() => handleSelect(item)}
+                  button key={idx} onClick={() => handleSelect(item)}
                   sx={{
                     "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
-                    px: 2,
-                    py: 1.5,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center"
+                    px: 2, py: 1.5, display: "flex", justifyContent: "space-between", alignItems: "center"
                   }}
                 >
                   <ListItemText
                     primaryTypographyProps={{ fontWeight: 500, fontSize: "1rem" }}
                     secondaryTypographyProps={{ fontSize: "0.85rem", color: "text.secondary" }}
                     primary={item.name}
-                    secondary={
-                      item.type === "category"
-                        ? "Category"
-                        : item.category.charAt(0).toUpperCase() + item.category.slice(1)
-                    }
+                    secondary={item.type === "category" ? "Category" : item.category}
                   />
                   <Chip
-                    label={
-                      item.type === "category"
-                        ? "Category"
-                        : item.category.charAt(0).toUpperCase() + item.category.slice(1)
-                    }
-                    color={ item.type === "category"
-                      ? "default"
-                      : categoryColors[item.category] || "default"
-                    }
+                    label={item.type === "category" ? "Category" : item.category}
+                    color={categoryColors[item.category] || "default"}
                     size="small"
                   />
                 </ListItem>
@@ -167,25 +156,40 @@ export default function Home() {
         )}
       </Container>
 
-      {/* Sections */}
+      {/* Dynamic Sections */}
       <Container maxWidth="lg">
+        <FeaturedTopics />
+      </Container>
+
+      <Container maxWidth="lg">
+        <FeaturedListings />
+      </Container>
+
+      <Container maxWidth="lg">
+        <EyesAreLookingAt />
+      </Container>
+      {/* <Container maxWidth="lg">
         <Box sx={{ mt: 10 }}>
-          <QuickCategories onCategoryClick={(c) => console.log("Clicked:", c)} />
+          <QuickCategories categories={categories} onCategoryClick={(c) => navigate(`/${c.category}`)} />
         </Box>
       </Container>
+
       <Container maxWidth="lg">
         <Box sx={{ mt: 5 }}>
-          <FeaturedListings />
+          <FeaturedListings items={preloadedItems} />
         </Box>
       </Container>
+
       <Container maxWidth="lg">
-        <LocalEvents onEventClick={(e) => console.log("Event clicked:", e)} />
+        <LocalEvents events={events} onEventClick={(e) => navigate(`/events/${e.id}`)} />
       </Container>
+
       <Container maxWidth="lg">
         <Box sx={{ mt: 5 }}>
           <Testimonials />
         </Box>
-      </Container>
+      </Container> */}
+
       <Container maxWidth="lg">
         <Box sx={{ mt: 5 }}>
           <CallToAction />

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link, useLocation } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import {
@@ -14,6 +14,9 @@ import ShareIcon from "@mui/icons-material/Share";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
+import { Breadcrumbs, Link as MuiLink } from "@mui/material";
+import { Link } from "react-router-dom";
+import { ArrowBack } from "@mui/icons-material";
 
 export default function DetailPage() {
   const { id } = useParams();
@@ -33,7 +36,15 @@ export default function DetailPage() {
       const docRef = doc(db, category, id);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setItem(docSnap.data());
+        const data = docSnap.data();
+        // Ensure gallery is always an array of valid URLs
+        if (!Array.isArray(data.gallery)) {
+          data.gallery = data.gallery ? [data.gallery] : [];
+        }
+        // Remove empty or invalid URLs
+        data.gallery = data.gallery.filter(url => typeof url === "string" && url.trim() !== "");
+        setItem(data);
+        // console.log("Fetched item:", data); // Debugging
       }
       setLoading(false);
       window.scrollTo(0, 0);
@@ -51,19 +62,35 @@ export default function DetailPage() {
     }
   };
 
+  // Helper to check for valid Google Maps embed URL
+  const isValidMapEmbed = url =>
+    typeof url === "string" && url.startsWith("https://www.google.com/maps/embed");
+
   return (
     <Container sx={{ mt: 4 }}>
       <Helmet>
         <title>
-          {item ? item.name : "Loading..."} | {category.charAt(0).toUpperCase() + category.slice(1)} in Mysuru | Mysurian
+          {item?.name
+            ? `${item.name} | ${category.charAt(0).toUpperCase() + category.slice(1)} in Mysuru | Mysurian`
+            : "Loading... | Mysurian"}
         </title>
         <meta
           name="description"
-          content={item?.description || `Details about ${item?.name || ""}`}
+          content={item?.description || `Details about ${item?.name || "this listing"}`}
         />
       </Helmet>
-
-      {/* Main Cover Image */}
+      <Box mb={2}>
+        <Breadcrumbs aria-label="breadcrumb">
+          <ArrowBack sx={{ verticalAlign: "middle", mr: 0.5, color: "grey" }} color="secondary" component={Link} to={`/category/${category}`} fontSize="inherit" />
+          <MuiLink component={Link} to="/categories" underline="hover" color="inherit">
+            Categories
+          </MuiLink>
+          <MuiLink component={Link} to={`/category/${category}`} underline="hover" color="inherit">
+            {category?.replace(/-/g, " ")}
+          </MuiLink>
+          <Typography color="text.primary">{item?.name}</Typography>
+        </Breadcrumbs>
+      </Box>
       {loading ? (
         <Skeleton variant="rectangular" width="100%" height={350} sx={{ borderRadius: 2, mb: 3 }} />
       ) : (
@@ -80,7 +107,7 @@ export default function DetailPage() {
           <img
             src={item?.gallery?.[0] || placeholderCover}
             alt={item?.name}
-            onError={(e) => e.target.src = placeholderCover}
+            onError={e => (e.target.src = placeholderCover)}
             style={{
               width: "100%",
               height: "100%",
@@ -120,51 +147,71 @@ export default function DetailPage() {
             </Grid>
           ))}
         </Grid>
-      ) : item?.gallery && item.gallery.length > 1 && (
-        <>
-          <Grid container spacing={2} mb={3}>
-            {item.gallery.slice(1).map((img, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
-                <Card
-                  onClick={() => { setPhotoIndex(index + 1); setLightboxOpen(true); }}
-                  sx={{
-                    cursor: "pointer",
-                    borderRadius: 2,
-                    overflow: "hidden",
-                    "&:hover img": { transform: "scale(1.05)" }
-                  }}
-                >
-                  <CardMedia
-                    component="img"
-                    height="180"
-                    image={img || placeholderImage}
-                    onError={(e) => e.target.src = placeholderImage}
-                    alt={`${item.name} image ${index + 2}`}
-                    sx={{
-                      objectFit: "cover",
-                      transition: "transform 0.5s ease"
+      ) : (
+        Array.isArray(item.gallery) && item.gallery.length > 1 ? (
+          <>
+            <Grid container spacing={2} mb={3}>
+              {item.gallery.slice(1).map((img, index) => (
+                <Grid item xs={12} sm={6} md={4} key={index}>
+                  <Card
+                    onClick={() => {
+                      setPhotoIndex(index + 1);
+                      setLightboxOpen(true);
                     }}
-                  />
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+                    sx={{
+                      cursor: "pointer",
+                      borderRadius: 2,
+                      overflow: "hidden",
+                      "&:hover img": { transform: "scale(1.05)" }
+                    }}
+                  >
+                    <CardMedia
+                      component="img"
+                      height="180"
+                      image={img || placeholderImage}
+                      onError={e => (e.target.src = placeholderImage)}
+                      alt={`${item.name} image ${index + 2}`}
+                      sx={{
+                        objectFit: "cover",
+                        transition: "transform 0.5s ease"
+                      }}
+                    />
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
 
-          {lightboxOpen && (
-            <Lightbox
-              mainSrc={item.gallery[photoIndex]}
-              nextSrc={item.gallery[(photoIndex + 1) % item.gallery.length]}
-              prevSrc={item.gallery[(photoIndex + item.gallery.length - 1) % item.gallery.length]}
-              onCloseRequest={() => setLightboxOpen(false)}
-              onMovePrevRequest={() =>
-                setPhotoIndex((photoIndex + item.gallery.length - 1) % item.gallery.length)
-              }
-              onMoveNextRequest={() =>
-                setPhotoIndex((photoIndex + 1) % item.gallery.length)
-              }
+            {lightboxOpen && (
+              <Lightbox
+                mainSrc={item.gallery[photoIndex]}
+                nextSrc={item.gallery[(photoIndex + 1) % item.gallery.length]}
+                prevSrc={item.gallery[(photoIndex + item.gallery.length - 1) % item.gallery.length]}
+                onCloseRequest={() => setLightboxOpen(false)}
+                onMovePrevRequest={() =>
+                  setPhotoIndex((photoIndex + item.gallery.length - 1) % item.gallery.length)
+                }
+                onMoveNextRequest={() =>
+                  setPhotoIndex((photoIndex + 1) % item.gallery.length)
+                }
+              />
+            )}
+          </>
+        ) : item.gallery?.length === 1 ? (
+          <Card sx={{ mb: 3 }}>
+            <CardMedia
+              component="img"
+              height="240"
+              image={item.gallery[0] || placeholderImage}
+              onError={e => (e.target.src = placeholderImage)}
+              alt={`${item.name} image`}
+              sx={{ objectFit: "cover", borderRadius: 2 }}
             />
-          )}
-        </>
+          </Card>
+        ) : (
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            No gallery available.
+          </Typography>
+        )
       )}
 
       {/* Description */}
@@ -180,17 +227,17 @@ export default function DetailPage() {
       ) : (
         <Box display="flex" gap={2} flexWrap="wrap" mb={3}>
           {item.contact && (
-            <Button variant="contained" color="primary" startIcon={<CallIcon />} href={`tel:${item.contact}`} sx={{ flex: { xs: "1 1 100%", sm: "0 0 auto" } }}>
+            <Button variant="contained" color="primary" startIcon={<CallIcon />} href={`tel:${item.contact}`}>
               Call Now
             </Button>
           )}
           {item.whatsapp && (
-            <Button variant="contained" color="success" startIcon={<WhatsAppIcon />} href={`https://wa.me/${item.whatsapp}`} target="_blank" rel="noopener noreferrer" sx={{ flex: { xs: "1 1 100%", sm: "0 0 auto" } }}>
+            <Button variant="contained" color="success" startIcon={<WhatsAppIcon />} href={`https://wa.me/${item.whatsapp}`} target="_blank" rel="noopener noreferrer">
               WhatsApp
             </Button>
           )}
           {item.website && (
-            <Button variant="contained" color="info" startIcon={<LanguageIcon />} href={item.website} target="_blank" rel="noopener noreferrer" sx={{ flex: { xs: "1 1 100%", sm: "0 0 auto" } }}>
+            <Button variant="contained" color="info" startIcon={<LanguageIcon />} href={item.website} target="_blank" rel="noopener noreferrer">
               Visit Website
             </Button>
           )}
@@ -210,7 +257,7 @@ export default function DetailPage() {
       {/* Map Embed */}
       {loading ? (
         <Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 2 }} />
-      ) : item?.mapEmbed && (
+      ) : isValidMapEmbed(item?.mapEmbed) ? (
         <Box sx={{ mb: 4, borderRadius: 2, overflow: "hidden" }}>
           <iframe
             src={item.mapEmbed}
@@ -222,9 +269,13 @@ export default function DetailPage() {
             title="Google Map"
           ></iframe>
         </Box>
+      ) : (
+        <Typography variant="body2" color="text.secondary" mb={2}>
+          Map not available.
+        </Typography>
       )}
 
-      {/* User Reviews (placeholder) */}
+      {/* User Reviews */}
       <Box mb={4}>
         <Typography variant="h6" gutterBottom>User Reviews</Typography>
         <Typography variant="body2" color="text.secondary">
@@ -232,7 +283,7 @@ export default function DetailPage() {
         </Typography>
       </Box>
 
-      {/* Nearby Attractions (placeholder) */}
+      {/* Nearby Attractions */}
       <Box mb={4}>
         <Typography variant="h6" gutterBottom>Nearby Attractions</Typography>
         <Typography variant="body2" color="text.secondary">

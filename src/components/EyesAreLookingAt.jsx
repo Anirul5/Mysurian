@@ -1,26 +1,27 @@
-// components/FeaturedListings.jsx
+// components/EyesAreLookingAt.jsx
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Grid } from '@mui/material';
 import { db } from '../firebaseConfig';
 import { collection, getDocs } from 'firebase/firestore';
-import ListingCard from './ListingCard'; 
+import ListingCard from './ListingCard';
 
-const FeaturedListings = () => {
-  const [listings, setListings] = useState([]);
+const EyesAreLookingAt = () => {
+  const [trending, setTrending] = useState([]);
+
   useEffect(() => {
-    const fetchListings = async () => {
-      const snapshot = await getDocs(collection(db, 'featuredListings'));
+    const fetchTrending = async () => {
+      const snapshot = await getDocs(collection(db, 'trendingListings'));
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setListings(data);
+      setTrending(data);
     };
-    fetchListings();
+    fetchTrending();
   }, []);
 
   return (
     <Box sx={{ mt: 5 }}>
-      <Typography variant="h5" gutterBottom>Editor’s Picks</Typography>
+      <Typography variant="h5" gutterBottom>Eyes Are Looking At</Typography>
       <Grid container spacing={3}>
-        {listings.map((item) => (
+        {trending.map((item) => (
           <Grid item xs={12} sm={6} md={4} lg={3} key={item.id}>
             <ListingCard item={item} />
           </Grid>
@@ -30,4 +31,4 @@ const FeaturedListings = () => {
   );
 };
 
-export default FeaturedListings;
+export default EyesAreLookingAt;

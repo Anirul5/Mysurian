@@ -17,6 +17,8 @@ import AdminPage from "./pages/AdminPage";
 import ManageListings from "./pages/ManageListings";
 import ListingForm from "./pages/ListingForm";
 import SchemaEditor from "./pages/SchemaEditor";
+import CategoryPage from "./pages/CategoryPage";
+import CategoriesListPage from "./pages/CategoriesListPage";
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
           <Route path="/admin/:categoryId/listings/:listingId/edit" element={<ListingForm />} />
           <Route path="/admin/:categoryId/schema" element={<SchemaEditor />} />
           <Route path="/" element={<Home />} />
+          <Route path="/category/:categoryName" element={<CategoryPage />} />
+          <Route path="/categories" element={<CategoriesListPage />} />
           <Route path="/gyms" element={<Gyms />} />
           <Route path="/hotels" element={<Hotels />} />
           <Route path="/restaurants" element={<Restaurants />} />
