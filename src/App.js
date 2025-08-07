@@ -19,6 +19,7 @@ import ListingForm from "./pages/ListingForm";
 import SchemaEditor from "./pages/SchemaEditor";
 import CategoryPage from "./pages/CategoryPage";
 import CategoriesListPage from "./pages/CategoriesListPage";
+import PrivateRoute from './components/PrivateRoute';
 
 function App() {
   return (
@@ -29,11 +30,50 @@ function App() {
         <Layout>
         <Routes>
           <Route path="/admin-login" element={<AdminLogin />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin/:categoryId/listings" element={<ManageListings />} />
-          <Route path="/admin/:categoryId/listings/new" element={<ListingForm />} /> {/* NOT SchemaEditor */}
-          <Route path="/admin/:categoryId/listings/:listingId/edit" element={<ListingForm />} />
-          <Route path="/admin/:categoryId/schema" element={<SchemaEditor />} />
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute>
+                <AdminPage />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/admin/:categoryId/listings"
+            element={
+              <PrivateRoute>
+                <ManageListings />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/admin/:categoryId/listings/new"
+            element={
+              <PrivateRoute>
+                <ListingForm />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/admin/:categoryId/listings/:listingId/edit"
+            element={
+              <PrivateRoute>
+                <ListingForm />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/admin/:categoryId/schema"
+            element={
+              <PrivateRoute>
+                <SchemaEditor />
+              </PrivateRoute>
+            }
+          />
           <Route path="/" element={<Home />} />
           <Route path="/category/:categoryName" element={<CategoryPage />} />
           <Route path="/categories" element={<CategoriesListPage />} />

@@ -27,8 +27,6 @@ import {
   TextField,
   Box,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
 import ListIcon from "@mui/icons-material/List";
 import { Edit, Delete } from "@mui/icons-material";
