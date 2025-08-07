@@ -1,19 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
-  Container, Typography, Box, Paper, List, ListItem, ListItemText, Chip
-} from '@mui/material';
+  Container,
+  Typography,
+  Box,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
+  Chip,
+} from "@mui/material";
 import SearchBar from "../components/SearchBar";
 import QuickCategories from "../components/QuickCategories";
-import FeaturedListings from '../components/FeaturedListings';
-import LocalEvents from '../components/LocalEvents';
-import Testimonials from '../components/Testimonials';
-import CallToAction from '../components/CallToAction';
-import { Helmet } from 'react-helmet-async';
+import FeaturedListings from "../components/FeaturedListings";
+import LocalEvents from "../components/LocalEvents";
+import Testimonials from "../components/Testimonials";
+import CallToAction from "../components/CallToAction";
+import { Helmet } from "react-helmet-async";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useNavigate } from "react-router-dom";
-import FeaturedTopics from '../components/FeaturedTopics';
-import EyesAreLookingAt from '../components/EyesAreLookingAt';
+import FeaturedTopics from "../components/FeaturedTopics";
+import EyesAreLookingAt from "../components/EyesAreLookingAt";
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,7 +36,7 @@ export default function Home() {
     gyms: "success",
     restaurants: "warning",
     events: "secondary",
-    default: "default"
+    default: "default",
   };
 
   useEffect(() => {
@@ -46,10 +53,10 @@ export default function Home() {
   useEffect(() => {
     const fetchCategories = async () => {
       const snapshot = await getDocs(collection(db, "categories"));
-      const categoryList = snapshot.docs.map(doc => ({
+      const categoryList = snapshot.docs.map((doc) => ({
         name: doc.data().name,
         category: doc.id,
-        type: "category"
+        type: "category",
       }));
       setCategories(categoryList);
     };
@@ -60,10 +67,10 @@ export default function Home() {
   useEffect(() => {
     const fetchFeatured = async () => {
       const snapshot = await getDocs(collection(db, "featured"));
-      const list = snapshot.docs.map(doc => ({
+      const list = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        type: "listing"
+        type: "listing",
       }));
       setPreloadedItems(list);
     };
@@ -74,9 +81,9 @@ export default function Home() {
   useEffect(() => {
     const fetchEvents = async () => {
       const snapshot = await getDocs(collection(db, "events"));
-      const eventList = snapshot.docs.map(doc => ({
+      const eventList = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
       setEvents(eventList);
     };
@@ -104,7 +111,14 @@ export default function Home() {
       </Helmet>
 
       <Box textAlign="center" mb={5}>
-        <Typography variant="h1" gutterBottom borderTop={2} borderColor="primary.main" pt={10} pb={2}>
+        <Typography
+          variant="h1"
+          gutterBottom
+          borderTop={2}
+          borderColor="primary.main"
+          pt={10}
+          pb={2}
+        >
           Discover Mysuru Like Never Before
         </Typography>
         <Typography variant="h6" color="text.secondary" pb={10}>
@@ -121,31 +135,53 @@ export default function Home() {
             placeholder="Search categories or places..."
           />
         </Box>
-
         {results.length > 0 && (
           <Paper
             sx={{
-              position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10, mt: 1,
-              borderRadius: "16px", overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              right: 0,
+              zIndex: 10,
+              mt: 1,
+              borderRadius: "16px",
+              overflow: "hidden",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
             }}
           >
             <List disablePadding>
               {results.map((item, idx) => (
                 <ListItem
-                  button key={idx} onClick={() => handleSelect(item)}
+                  button
+                  key={idx}
+                  onClick={() => handleSelect(item)}
                   sx={{
                     "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
-                    px: 2, py: 1.5, display: "flex", justifyContent: "space-between", alignItems: "center"
+                    px: 2,
+                    py: 1.5,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
                   <ListItemText
-                    primaryTypographyProps={{ fontWeight: 500, fontSize: "1rem" }}
-                    secondaryTypographyProps={{ fontSize: "0.85rem", color: "text.secondary" }}
+                    primaryTypographyProps={{
+                      fontWeight: 500,
+                      fontSize: "1rem",
+                    }}
+                    secondaryTypographyProps={{
+                      fontSize: "0.85rem",
+                      color: "text.secondary",
+                    }}
                     primary={item.name}
-                    secondary={item.type === "category" ? "Category" : item.category}
+                    secondary={
+                      item.type === "category" ? "Category" : item.category
+                    }
                   />
                   <Chip
-                    label={item.type === "category" ? "Category" : item.category}
+                    label={
+                      item.type === "category" ? "Category" : item.category
+                    }
                     color={categoryColors[item.category] || "default"}
                     size="small"
                   />

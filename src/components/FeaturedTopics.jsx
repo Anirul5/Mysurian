@@ -1,44 +1,63 @@
-// components/FeaturedTopics.jsx
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, Chip, Grid } from '@mui/material';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { db } from "../firebaseConfig";
+import { useNavigate } from "react-router-dom";
+import { Box, Typography, Grid, Card, CardContent, Chip } from "@mui/material";
+import WhatshotIcon from "@mui/icons-material/Whatshot";
 
-const FeaturedTopics = () => {
-  const [topCategories, setTopCategories] = useState([]);
+function FeaturedTopics() {
+  const [topics, setTopics] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchTopCategories = async () => {
-      const q = query(collection(db, 'searchAnalytics'), orderBy('count', 'desc'), limit(5));
-      const snapshot = await getDocs(q);
-      const categories = snapshot.docs.map(doc => ({
-        name: doc.id,
-        ...doc.data(),
-      }));
-      setTopCategories(categories);
+    const fetchTopSearches = async () => {
+      try {
+        const q = query(collection(db, "searchAnalytics"), orderBy("count", "desc"), limit(8));
+        const snapshot = await getDocs(q);
+        const topSearches = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setTopics(topSearches);
+      } catch (error) {
+        console.error("Failed to fetch search analytics:", error);
+      }
     };
-    fetchTopCategories();
+
+    fetchTopSearches();
   }, []);
 
+  const handleClick = (term) => {
+    navigate(`/search?query=${encodeURIComponent(term)}`);
+  };
+
   return (
-    <Box sx={{ mt: 5 }}>
-      <Typography variant="h5" gutterBottom>Featured Topics</Typography>
+    <Box my={4}>
+      <Typography variant="h5" fontWeight="bold" gutterBottom>
+        🔥 Featured Topics
+      </Typography>
       <Grid container spacing={2}>
-        {topCategories.map((cat, idx) => (
-          <Grid item key={idx}>
-            <Chip
-              label={cat.name}
-              onClick={() => navigate(`/${cat.name.toLowerCase()}`)}
-              color="primary"
-              variant="outlined"
-            />
+        {topics.map((topic, idx) => (
+          <Grid item xs={6} sm={4} md={3} key={idx}>
+            <Card
+              sx={{ cursor: "pointer", "&:hover": { boxShadow: 6 } }}
+              onClick={() => handleClick(topic.term)}
+            >
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={500}>
+                  <WhatshotIcon fontSize="small" sx={{ mr: 1 }} />
+                  {topic.term}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {topic.count} searches
+                </Typography>
+              </CardContent>
+            </Card>
           </Grid>
         ))}
       </Grid>
     </Box>
   );
-};
+}
 
 export default FeaturedTopics;

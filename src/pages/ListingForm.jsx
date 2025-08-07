@@ -1,223 +1,283 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  Divider,
-  Grid,
-  IconButton,
   TextField,
   Typography,
+  Grid,
+  MenuItem,
+  IconButton,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
-import { db } from "../firebaseConfig";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  collection,
-  addDoc,
-} from "firebase/firestore";
-import { ArrowLeft } from "lucide-react";
+import { db } from "../firebaseConfig";
+import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
+import DeleteIcon from "@mui/icons-material/Delete";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { itemFieldTypes, typedOfFields } from "../utils/itemFieldTypes";
+import Divider from "@mui/material/Divider";
 
-export default function ListingForm() {
+const DEFAULT_FIELDS = {
+  name: { value: "", type: "String", required: true },
+  description: { value: "", type: "String", required: true },
+  date: {
+    value: new Date().toISOString().split("T")[0],
+    type: "Date",
+    required: false,
+  },
+  address: { value: "", type: "String", required: false },
+  rating: { value: "", type: "Number", required: false },
+  image: { value: "", type: "String", required: false },
+  mapurl: { value: "", type: "String", required: false },
+  gallery: { value: "", type: "String", required: false },
+};
+
+const ListingForm = () => {
   const { categoryId, listingId } = useParams();
   const navigate = useNavigate();
-
-  const [formData, setFormData] = useState({
+  const [fields, setFields] = useState({});
+  const [newField, setNewField] = useState({
     name: "",
-    description: "",
-    date: new Date().toISOString().split("T")[0],
+    value: "",
+    type: "String",
+    required: false,
   });
-  const [extraFields, setExtraFields] = useState([]);
-  const [newFieldName, setNewFieldName] = useState("");
-  const [isEditMode, setIsEditMode] = useState(!!listingId);
-  const [loading, setLoading] = useState(true);
+  const [previewMode, setPreviewMode] = useState(false);
 
   useEffect(() => {
-    const loadData = async () => {
-      if (listingId) {
-        try {
-          const ref = doc(db, categoryId, listingId);
-          const snap = await getDoc(ref);
-          if (snap.exists()) {
-            const data = snap.data();
-            setFormData({
-              ...data,
-              date: data.date || new Date().toISOString().split("T")[0],
-            });
-
-            const knownKeys = ["name", "description", "date"];
-            const dynamicFields = Object.keys(data)
-              .filter((key) => !knownKeys.includes(key))
-              .map((key) => ({ key, value: data[key] }));
-            setExtraFields(dynamicFields);
-          }
-        } catch (err) {
-          console.error("Error loading listing:", err);
+    if (listingId) {
+      const fetchListing = async () => {
+        const docRef = doc(db, categoryId, listingId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const loadedFields = {};
+          Object.entries(data).forEach(([key, value]) => {
+            let detectedType = typeof value;
+            if (detectedType === "object" && value instanceof Date)
+              detectedType = "Date";
+            else if (value === "1" || value === "0") detectedType = "Boolean";
+            loadedFields[key] = {
+              value: value,
+              type: itemFieldTypes[key]?.type || detectedType || "String",
+              required: DEFAULT_FIELDS[key]?.required || false,
+            };
+          });
+          setFields(loadedFields);
         }
-      }
-      setLoading(false);
-    };
-
-    loadData();
-  }, [categoryId, listingId]);
-
-  const handleChange = (key, value) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleExtraChange = (index, value) => {
-    const updated = [...extraFields];
-    updated[index].value = value;
-    setExtraFields(updated);
-  };
-
-  const handleAddField = () => {
-    const key = newFieldName.trim().toLowerCase().replace(/\s+/g, "_");
-    if (!key) return alert("Please enter a valid field name.");
-    if (
-      ["name", "description", "date"].includes(key) ||
-      extraFields.some((f) => f.key === key)
-    ) {
-      return alert("Field already exists or is reserved.");
+      };
+      fetchListing();
+    } else {
+      setFields(DEFAULT_FIELDS);
     }
+  }, [listingId, categoryId]);
 
-    setExtraFields([...extraFields, { key, value: "" }]);
-    setNewFieldName("");
+  const handleFieldChange = (key, value) => {
+    setFields((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], value },
+    }));
+  };
+
+  const handleNewFieldAdd = () => {
+    const { name, value, type, required } = newField;
+    if (name && type) {
+      setFields((prev) => ({
+        ...prev,
+        [name]: { value, type, required },
+      }));
+      setNewField({ name: "", value: "", type: "String", required: false });
+    }
   };
 
   const handleSubmit = async () => {
-    const payload = {
-      ...formData,
-      date: formData.date || new Date().toISOString().split("T")[0],
-    };
-    extraFields.forEach((field) => {
-      payload[field.key] = field.value;
-    });
-
-    try {
-      if (isEditMode) {
-        await updateDoc(doc(db, categoryId, listingId), payload);
+    const data = {};
+    for (const key in fields) {
+      const { value, type } = fields[key];
+      if (type === "Number") {
+        data[key] = parseFloat(value) || 0;
+      } else if (type === "Boolean") {
+        data[key] = value === true || value === "1" || value === 1 ? "1" : "0";
       } else {
-        await addDoc(collection(db, categoryId), payload);
+        data[key] = value;
       }
-      navigate(`/admin/${categoryId}/listings`);
-    } catch (err) {
-      console.error("Error saving listing:", err);
-      alert("Failed to save listing.");
     }
+
+    if (listingId) {
+      await updateDoc(doc(db, categoryId, listingId), data);
+    } else {
+      await addDoc(collection(db, categoryId), {
+        ...data,
+        date: new Date().toISOString().split("T")[0],
+      });
+    }
+
+    navigate(`/admin/${categoryId}/listings`);
   };
 
-  if (loading) return <Typography p={4}>Loading form...</Typography>;
+  const removeField = (key) => {
+    const newFields = { ...fields };
+    delete newFields[key];
+    setFields(newFields);
+  };
 
   return (
-    <Box p={4} bgcolor="#f7f9fc" minHeight="100vh">
-      <Box display="flex" alignItems="center" gap={2} mb={4}>
-        <IconButton onClick={() => navigate(`/admin/${categoryId}/listings`)}>
-          <ArrowLeft />
-        </IconButton>
-        <Typography variant="h4" fontWeight="bold">
-          {isEditMode ? "Edit Listing" : "Add New Listing"}
-        </Typography>
-      </Box>
+    <Box p={3}>
+      <Button
+        startIcon={<ArrowBackIcon />}
+        color="secondary"
+        onClick={() => navigate(`/admin/${categoryId}/listings`)}
+        sx={{ mb: 2 }}
+      >
+        Back
+      </Button>
 
-      <Card elevation={3} sx={{ borderRadius: 3 }}>
-        <CardHeader
-          title="Listing Information"
-          titleTypographyProps={{ variant: "h6", fontWeight: "bold" }}
-          sx={{ bgcolor: "#e3f2fd" }}
-        />
-        <CardContent>
-          <Grid container spacing={3}>
-            {/* Name */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Name"
-                fullWidth
-                required
-                value={formData.name}
-                onChange={(e) => handleChange("name", e.target.value)}
+      <Typography variant="h5" gutterBottom>
+        {listingId ? "Edit Listing" : "Add New Listing"}
+      </Typography>
+
+      <Grid container spacing={2}>
+        {Object.entries(fields).map(([key, field]) => (
+          <Grid item xs={12} sm={6} key={key}>
+            {field.type === "Boolean" ? (
+              <FormControlLabel
+                control={
+                  <Switch
+                    color="secondary"
+                    checked={field.value === true || field.value === "1"}
+                    onChange={(e) => handleFieldChange(key, e.target.checked)}
+                  />
+                }
+                label={key}
               />
-            </Grid>
-
-            {/* Description */}
-            <Grid item xs={12} md={6}>
+            ) : (
               <TextField
-                label="Description"
                 fullWidth
-                multiline
-                rows={3}
-                value={formData.description}
-                onChange={(e) => handleChange("description", e.target.value)}
+                label={key}
+                type={field.type === "Number" ? "number" : "text"}
+                inputProps={
+                  field.type === "Number"
+                    ? { inputMode: "decimal", step: "0.1", min: 0, max: 5 }
+                    : {}
+                }
+                value={field.value}
+                onChange={(e) => handleFieldChange(key, e.target.value)}
+                required={field.required}
+                InputProps={{
+                  endAdornment: (
+                    <IconButton onClick={() => removeField(key)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  ),
+                }}
               />
-            </Grid>
-
-            {/* Date */}
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Date"
-                type="date"
-                fullWidth
-                disabled
-                value={formData.date}
-              />
-            </Grid>
-
-            {/* New Field Adder */}
-            <Grid item xs={12} md={6}>
-              <Box display="flex" gap={2}>
-                <TextField
-                  label="Field Name"
-                  fullWidth
-                  value={newFieldName}
-                  onChange={(e) => setNewFieldName(e.target.value)}
-                />
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  onClick={handleAddField}
-                >
-                  Add Field
-                </Button>
-              </Box>
-            </Grid>
-
-            {/* Dynamic Fields */}
-            {extraFields.map((field, index) => (
-              <Grid item xs={12} md={6} key={field.key}>
-                <TextField
-                  label={field.key.replace(/_/g, " ").toUpperCase()}
-                  fullWidth
-                  value={field.value}
-                  onChange={(e) => handleExtraChange(index, e.target.value)}
-                />
-              </Grid>
-            ))}
+            )}
           </Grid>
+        ))}
+      </Grid>
 
-          <Divider sx={{ my: 4 }} />
-
-          <Box display="flex" justifyContent="flex-end" gap={2}>
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={() => navigate(`/admin/${categoryId}/listings`)}
+      <Box mt={4}>
+        <Typography variant="subtitle1" gutterBottom>
+          Add New Field
+        </Typography>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={3}>
+            <TextField
+              label="Field Name"
+              fullWidth
+              value={newField.name}
+              onChange={(e) =>
+                setNewField((prev) => ({ ...prev, name: e.target.value }))
+              }
+            />
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <TextField
+              label="Value"
+              fullWidth
+              value={newField.value}
+              onChange={(e) =>
+                setNewField((prev) => ({ ...prev, value: e.target.value }))
+              }
+            />
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <TextField
+              label="Datatype"
+              fullWidth
+              select
+              value={newField.type}
+              onChange={(e) =>
+                setNewField((prev) => ({ ...prev, type: e.target.value }))
+              }
             >
-              Cancel
-            </Button>
+              {Object.values(typedOfFields).map((option) => (
+                <MenuItem key={option.type} value={option.type}>
+                  {option.type}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={2}>
             <Button
+              onClick={handleNewFieldAdd}
               variant="contained"
               color="secondary"
-              onClick={handleSubmit}
             >
-              {isEditMode ? "Update Listing" : "Create Listing"}
+              Add Field
             </Button>
+          </Grid>
+        </Grid>
+      </Box>
+
+      <Box mt={4}>
+        {/* <Button variant="contained" color="secondary" onClick={handleSubmit}>
+          {listingId ? "Update Listing" : "Save Listing"}
+        </Button> */}
+        <Grid item xs={12}>
+          <Divider sx={{ my: 2 }} />
+          <Box display="flex" gap={2}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => setPreviewMode(!previewMode)}
+            >
+              {previewMode ? "Edit Mode" : "Preview Listing"}
+            </Button>
+            {!previewMode && (
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleSubmit}
+              >
+                {listingId ? "Update Listing" : "Submit Listing"}
+              </Button>
+            )}
           </Box>
-        </CardContent>
-      </Card>
+        </Grid>
+
+        {previewMode && (
+          <Grid item xs={12}>
+            <Box
+              sx={{ p: 2, border: "1px solid #ccc", borderRadius: 2, mt: 2 }}
+            >
+              <Typography variant="h6">Preview</Typography>
+              <pre>
+                {JSON.stringify(
+                  Object.fromEntries(
+                    Object.entries(fields).map(([k, v]) => [k, v.value])
+                  ),
+                  null,
+                  2
+                )}
+              </pre>
+            </Box>
+          </Grid>
+        )}
+      </Box>
     </Box>
   );
-}
+};
+
+export default ListingForm;

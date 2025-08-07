@@ -16,6 +16,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { Add, Edit, Delete } from "@mui/icons-material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 export default function ManageListings() {
   const { categoryId } = useParams();
@@ -25,7 +26,10 @@ export default function ManageListings() {
   useEffect(() => {
     const fetchListings = async () => {
       const snapshot = await getDocs(collection(db, categoryId));
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       setListings(data);
     };
 
@@ -33,17 +37,28 @@ export default function ManageListings() {
   }, [categoryId]);
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this listing?")) return;
+    if (!window.confirm("Are you sure you want to delete this listing?"))
+      return;
     await deleteDoc(doc(db, categoryId, id));
-    setListings(listings.filter((item) => item.id !== id));
+    setListings((prev) => prev.filter((item) => item.id !== id));
   };
 
   return (
     <Container sx={{ mt: 4 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" fontWeight="bold">
-          {categoryId.toUpperCase()} Listings
-        </Typography>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+      >
+        <Button
+          startIcon={<ArrowBackIcon />}
+          color="secondary"
+          onClick={() => navigate(`/admin/`)}
+          sx={{ mb: 2 }}
+        >
+          Back
+        </Button>
         <Button
           variant="contained"
           color="secondary"
@@ -53,14 +68,23 @@ export default function ManageListings() {
           Add Listing
         </Button>
       </Box>
-
+      <Typography variant="h5" fontWeight="bold">
+        {categoryId.replace(/_/g, " ").slice(0, 1).toUpperCase() +
+          categoryId.replace(/_/g, " ").slice(1)}{" "}
+        Listings
+      </Typography>
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell><strong>Name</strong></TableCell>
-            <TableCell><strong>Description</strong></TableCell>
-            <TableCell><strong>Date</strong></TableCell>
-            <TableCell><strong>Actions</strong></TableCell>
+            <TableCell>
+              <strong>Name</strong>
+            </TableCell>
+            <TableCell>
+              <strong>Description</strong>
+            </TableCell>
+            <TableCell>
+              <strong>Actions</strong>
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -72,13 +96,14 @@ export default function ManageListings() {
                   ? listing.description.slice(0, 80) + "..."
                   : listing.description || "—"}
               </TableCell>
-              <TableCell>{listing.date || "—"}</TableCell>
               <TableCell>
                 <Tooltip title="Edit">
                   <IconButton
                     color="secondary"
                     onClick={() =>
-                      navigate(`/admin/${categoryId}/listings/${listing.id}/edit`)
+                      navigate(
+                        `/admin/${categoryId}/listings/${listing.id}/edit`
+                      )
                     }
                   >
                     <Edit />

@@ -8,15 +8,19 @@ import {
   ListItemText,
   Chip,
   Box,
-  Stack
+  Stack,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useNavigate } from "react-router-dom";
-import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import { categoryColors } from "../utils/categoryColors"; 
+import { categoryColors } from "../utils/categoryColors";
+import { logSearch } from "../utils/logSearch";
 
-function SearchBar({ placeholder = "Search categories or places...", showDropdown = true }) {
+function SearchBar({
+  placeholder = "Search categories or places...",
+  showDropdown = true,
+}) {
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState([]);
   const [preloadedItems, setPreloadedItems] = useState([]);
@@ -28,7 +32,7 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
   useEffect(() => {
     const fetchCategories = async () => {
       const snapshot = await getDocs(collection(db, "categories"));
-      const catList = snapshot.docs.map(doc => doc.id);
+      const catList = snapshot.docs.map((doc) => doc.id);
       setCategories(["all", ...catList]);
     };
     fetchCategories();
@@ -49,14 +53,15 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
     if (!showDropdown) return;
     const fetchFeatured = async () => {
       let allData = [];
-      const categoriesToUse = selectedCategory === "all" ? categories.slice(1) : [selectedCategory];
+      const categoriesToUse =
+        selectedCategory === "all" ? categories.slice(1) : [selectedCategory];
       for (let category of categoriesToUse) {
         const snapshot = await getDocs(collection(db, category));
-        let list = snapshot.docs.map(doc => ({
+        let list = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
           category,
-          type: "listing"
+          type: "listing",
         }));
         list.sort(() => Math.random() - 0.5);
         allData = [...allData, ...list.slice(0, 3)];
@@ -67,20 +72,22 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
   }, [showDropdown, selectedCategory, categories]);
 
   useEffect(() => {
-    if (!showDropdown) return;
-
-    if (!searchTerm) {
+    if (!showDropdown || !searchTerm) {
       setResults([]);
       return;
     }
 
-    const matchedPreloaded = preloadedItems.filter(item =>
+    const matchedPreloaded = preloadedItems.filter((item) =>
       Object.entries(item).some(([key, val]) => {
         if (typeof val === "string") {
           return val.toLowerCase().includes(searchTerm.toLowerCase());
         }
         if (Array.isArray(val)) {
-          return val.some(v => typeof v === "string" && v.toLowerCase().includes(searchTerm.toLowerCase()));
+          return val.some(
+            (v) =>
+              typeof v === "string" &&
+              v.toLowerCase().includes(searchTerm.toLowerCase())
+          );
         }
         return false;
       })
@@ -88,19 +95,29 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
 
     if (searchTerm.length > 2) {
       const fetchLazyResults = async () => {
-        const categoriesToUse = selectedCategory === "all" ? categories.slice(1) : [selectedCategory];
+        const categoriesToUse =
+          selectedCategory === "all" ? categories.slice(1) : [selectedCategory];
         let allMatches = [];
         for (let category of categoriesToUse) {
           const snapshot = await getDocs(collection(db, category));
           const matches = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data(), category, type: "listing" }))
-            .filter(item =>
+            .map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+              category,
+              type: "listing",
+            }))
+            .filter((item) =>
               Object.entries(item).some(([key, val]) => {
                 if (typeof val === "string") {
                   return val.toLowerCase().includes(searchTerm.toLowerCase());
                 }
                 if (Array.isArray(val)) {
-                  return val.some(v => typeof v === "string" && v.toLowerCase().includes(searchTerm.toLowerCase()));
+                  return val.some(
+                    (v) =>
+                      typeof v === "string" &&
+                      v.toLowerCase().includes(searchTerm.toLowerCase())
+                  );
                 }
                 return false;
               })
@@ -111,7 +128,10 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
         const combined = [...matchedPreloaded, ...allMatches];
         const unique = combined.filter(
           (v, i, a) =>
-            a.findIndex(t => (t.id === v.id && t.category === v.category && t.type === v.type)) === i
+            a.findIndex(
+              (t) =>
+                t.id === v.id && t.category === v.category && t.type === v.type
+            ) === i
         );
         setResults(unique);
       };
@@ -134,11 +154,7 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (searchTerm.trim() !== "") {
-      await addDoc(collection(db, "searchLogs"), {
-        term: searchTerm.trim(),
-        category: selectedCategory,
-        timestamp: serverTimestamp(),
-      });
+      await logSearch(searchTerm.trim(), selectedCategory);
       navigate(`/search?query=${encodeURIComponent(searchTerm.trim())}`);
       setSearchTerm("");
     }
@@ -146,11 +162,26 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
 
   return (
     <div style={{ position: "relative" }} ref={dropdownRef}>
-      <Stack direction="row" spacing={1} mb={1} flexWrap="wrap">
+      <Stack
+        direction="row"
+        spacing={1}
+        mb={1}
+        flexWrap="wrap"
+        sx={{ display: { xs: "none", sm: "none", md: "block" } }}
+      >
         {categories.map((cat) => (
           <Chip
-            key={cat}
-            label={cat}
+            mb={1}
+            key={cat
+              .replaceAll("_", " ")
+              .split(" ")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ")}
+            label={cat
+              .replaceAll("_", " ")
+              .split(" ")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ")}
             onClick={() => setSelectedCategory(cat)}
             color={selectedCategory === cat ? "secondary" : "default"}
           />
@@ -184,7 +215,7 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
             mt: 1,
             borderRadius: "16px",
             overflow: "hidden",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.15)"
+            boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
           }}
         >
           <List disablePadding>
@@ -197,32 +228,23 @@ function SearchBar({ placeholder = "Search categories or places...", showDropdow
                   "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
                   px: 2,
                   py: 1.5,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center"
                 }}
               >
                 <ListItemText
-                  primaryTypographyProps={{ fontWeight: 500, fontSize: "1rem" }}
-                  secondaryTypographyProps={{ fontSize: "0.85rem", color: "text.secondary" }}
                   primary={item.name}
-                  secondary={
-                    item.type === "category"
-                      ? "Category"
-                      : item.category.charAt(0).toUpperCase() + item.category.slice(1)
-                  }
+                  secondary={item.category
+                    .replaceAll("_", " ")
+                    .split(" ")
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(" ")}
                 />
                 <Chip
-                  label={
-                    item.type === "category"
-                      ? "Category"
-                      : item.category.charAt(0).toUpperCase() + item.category.slice(1)
-                  }
-                  color={
-                    item.type === "category"
-                      ? "default"
-                      : categoryColors[item.category] || "default"
-                  }
+                  label={item.category
+                    .replaceAll("_", " ")
+                    .split(" ")
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(" ")}
+                  color={categoryColors[item.category] || "default"}
                   size="small"
                 />
               </ListItem>
