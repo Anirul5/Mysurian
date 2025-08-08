@@ -1,34 +1,56 @@
-// components/EyesAreLookingAt.jsx
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, Grid } from '@mui/material';
-import { db } from '../firebaseConfig';
-import { collection, getDocs } from 'firebase/firestore';
-import ListingCard from './ListingCard';
+import React from "react";
+import { Box, Typography, Grid, Card, CardContent } from "@mui/material";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import { useNavigate } from "react-router-dom";
+import useAllItems from "../hooks/useAllItems";
 
-const EyesAreLookingAt = () => {
-  const [trending, setTrending] = useState([]);
+function EyesAreLookingAt() {
+  const { allItems, loading } = useAllItems();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchTrending = async () => {
-      const snapshot = await getDocs(collection(db, 'trendingListings'));
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setTrending(data);
-    };
-    fetchTrending();
-  }, []);
+  if (loading) return null;
+
+  const eyes = allItems.filter((item) => item.eyes === "1").slice(0, 6);
+
+  const handleClick = (item) => {
+    navigate(`/${item.category}/${item.id}`);
+  };
 
   return (
-    <Box sx={{ mt: 5 }}>
-      <Typography variant="h5" gutterBottom>Eyes Are Looking At</Typography>
-      <Grid container spacing={3}>
-        {trending.map((item) => (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={item.id}>
-            <ListingCard item={item} />
+    <Box my={4}>
+      <Typography variant="h5" fontWeight="bold" gutterBottom>
+        <VisibilityIcon fontSize="small" sx={{ mr: 1, color: "#3653f7ff" }} />
+        Eyes Are Looking At
+      </Typography>
+      <Grid
+        container
+        spacing={2}
+        columns={18}
+        sx={{ justifyContent: "center" }}
+      >
+        {eyes.map((item, idx) => (
+          <Grid item xs={6} sm={4} md={2} key={idx} size={3} minWidth={120}>
+            <Card
+              sx={{
+                cursor: "pointer",
+                "&:hover": { boxShadow: 6 },
+                height: 120,
+              }}
+              onClick={() => handleClick(item)}
+            >
+              <CardContent>
+                <VisibilityIcon fontSize="small" sx={{ mr: 1 }} />
+                <br />
+                <Typography variant="caption" fontWeight={400}>
+                  {item.name || "Unnamed Item"}
+                </Typography>
+              </CardContent>
+            </Card>
           </Grid>
         ))}
       </Grid>
     </Box>
   );
-};
+}
 
 export default EyesAreLookingAt;

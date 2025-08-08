@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from "react";
 import {
-  AppBar, Toolbar, IconButton, Typography, Box, Button, Drawer, Menu, MenuItem,
-  List, ListItem, ListItemButton, ListItemText, TextField, InputAdornment
+  AppBar,
+  Toolbar,
+  IconButton,
+  Typography,
+  Box,
+  Button,
+  Drawer,
+  Menu,
+  MenuItem,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import SearchIcon from "@mui/icons-material/Search";
@@ -10,13 +23,7 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebaseConfig"; // adjust if needed
 
-const navLinks = [
-  { label: "Home", path: "/" },
-  { label: "Hotels", path: "/hotels" },
-  { label: "Gyms", path: "/gyms" },
-  { label: "Restaurants", path: "/restaurants" },
-  { label: "Events", path: "/events" },
-];
+const navLinks = [{ label: "Home", path: "/" }];
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -30,8 +37,7 @@ export default function Header() {
     const fetchCategories = async () => {
       const snapshot = await getDocs(collection(db, "categories"));
       const list = snapshot.docs.map((doc) => doc.id);
-      setCategories(
-        list);
+      setCategories(list);
     };
     fetchCategories();
   }, []);
@@ -69,11 +75,16 @@ export default function Header() {
         </ListItem>
         {categories.map((cat) => (
           <ListItem key={cat} disablePadding>
-            <ListItemButton onClick={() => handleCategoryClick(`category/${cat}`)}>
-              <ListItemText primary={cat.replaceAll("_", " ")
-              .split(" ")
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(" ")} />
+            <ListItemButton
+              onClick={() => handleCategoryClick(`category/${cat}`)}
+            >
+              <ListItemText
+                primary={cat
+                  .replaceAll("_", " ")
+                  .split(" ")
+                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(" ")}
+              />
             </ListItemButton>
           </ListItem>
         ))}
@@ -95,7 +106,7 @@ export default function Header() {
                 textDecoration: "none",
                 color: "inherit",
                 fontWeight: "bold",
-                mr: 4
+                mr: 4,
               }}
             >
               Mysurian
@@ -110,7 +121,7 @@ export default function Header() {
               display: { xs: "none", md: "block" },
               maxWidth: 300,
               flexGrow: 1,
-              mr: 2
+              mr: 2,
             }}
           >
             <TextField
@@ -125,7 +136,7 @@ export default function Header() {
                 borderRadius: "50px",
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "50px",
-                }
+                },
               }}
               InputProps={{
                 startAdornment: (
@@ -167,11 +178,15 @@ export default function Header() {
                 All Categories
               </MenuItem>
               {categories.map((cat) => (
-                <MenuItem key={cat} onClick={() => handleCategoryClick(`/category/${cat}`)}>
-                  {cat.replaceAll("_", " ")
-        .split(" ")
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ")}
+                <MenuItem
+                  key={cat}
+                  onClick={() => handleCategoryClick(`/category/${cat}`)}
+                >
+                  {cat
+                    .replaceAll("_", " ")
+                    .split(" ")
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(" ")}
                 </MenuItem>
               ))}
             </Menu>
@@ -225,7 +240,7 @@ export default function Header() {
               borderRadius: "50px",
               "& .MuiOutlinedInput-root": {
                 borderRadius: "50px",
-              }
+              },
             }}
             InputProps={{
               startAdornment: (
