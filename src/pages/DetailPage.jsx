@@ -176,7 +176,7 @@ export default function DetailPage() {
               }}
             >
               <img
-                src={item?.gallery?.[0] || placeholderCover}
+                src={item?.image || placeholderCover}
                 alt={item?.name}
                 onError={(e) => (e.target.src = placeholderCover)}
                 style={{

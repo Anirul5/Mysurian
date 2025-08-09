@@ -1,56 +1,88 @@
-import React from "react";
-import { Grid, Card, CardActionArea, CardContent, Typography, Box, Button } from "@mui/material";
-import HotelIcon from "@mui/icons-material/Hotel";
-import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
-import RestaurantIcon from "@mui/icons-material/Restaurant";
-import EventIcon from "@mui/icons-material/Event";
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebaseConfig";
+import {
+  Grid,
+  Card,
+  CardActionArea,
+  CardMedia,
+  CardContent,
+  Typography,
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
-const categories = [
-  { title: "Hotels", icon: <HotelIcon fontSize="large" />, color: "#6A1B9A" },
-  { title: "Gyms", icon: <FitnessCenterIcon fontSize="large" />, color: "#FBC02D" },
-  { title: "Restaurants", icon: <RestaurantIcon fontSize="large" />, color: "#D32F2F" },
-  { title: "Events", icon: <EventIcon fontSize="large" />, color: "#0288D1" },
-];
+export default function QuickCategories() {
+  const [categories, setCategories] = useState([]);
+  const navigate = useNavigate();
 
-export default function QuickCategories({ onCategoryClick }) {
+  useEffect(() => {
+    const CACHE_KEY = "quickCategories";
+    const CACHE_TIME_KEY = "quickCategoriesTimestamp";
+    const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in ms
+
+    const fetchCategories = async () => {
+      const querySnapshot = await getDocs(collection(db, "categories"));
+      const categoriesData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setCategories(categoriesData);
+
+      // Save to sessionStorage
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(categoriesData));
+      sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+    };
+
+    const cachedData = sessionStorage.getItem(CACHE_KEY);
+    const cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
+
+    if (
+      cachedData &&
+      cachedTime &&
+      Date.now() - parseInt(cachedTime) < CACHE_DURATION
+    ) {
+      // Use cached data
+      setCategories(JSON.parse(cachedData));
+    } else {
+      // Fetch new data
+      fetchCategories();
+    }
+  }, []);
+
   return (
-    <Grid
-      container
-      spacing={3}
-      justifyContent="center"
-      sx={{ maxWidth: 1200, margin: "auto" }} // Center & set max width
-    >
-      {categories.map((cat) => (
-        <Grid item xs={12} sm={6} md={3} key={cat.title}>
-          <Button component={Link} to={`/${cat.title.toLowerCase()}`}>
-            <Card
-              sx={{
-                borderRadius: "16px",
-              textAlign: "center",
-              backgroundColor: "#fff",
-              boxShadow: 0,
-              "&:hover": { boxShadow: 6, transform: "scale(1.05)" },
-              transition: "all 0.3s ease-in-out",
-              height: "150px",
-              width: "225px",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-            }}
-          >
-            <CardActionArea
-              sx={{ height: "100%" }}
-            >
-              <CardContent>
-                <Box sx={{ color: cat.color, mb: 1 }} >{cat.icon}</Box>
-                <Typography variant="h6">{cat.title}</Typography>
-              </CardContent>
-            </CardActionArea>
-          </Card>
-          </Button>
-        </Grid>
-      ))}
-    </Grid>
+    <div style={{ padding: "2rem" }}>
+      <Typography variant="overline" fontSize={18}>
+        Categories
+      </Typography>
+      <Grid
+        container
+        spacing={{ xs: 2, md: 3 }}
+        columns={{ xs: 4, sm: 8, md: 15 }}
+      >
+        {categories.map((cat) => (
+          <Grid item key={cat.id} size={{ xs: 4, sm: 4, md: 3 }}>
+            <Card sx={{ cursor: "pointer", "&:hover": { boxShadow: 6 } }}>
+              <CardActionArea
+                onClick={() => navigate(`/category/${cat.id}`)}
+                sx={{
+                  maxHeight: 200,
+                }}
+              >
+                <CardMedia
+                  component="img"
+                  height="160"
+                  image={cat.imageForCategory || "/fallback.jpg"}
+                  alt={cat.name}
+                />
+                <CardContent>
+                  <Typography variant="subtitle">{cat.name}</Typography>
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </div>
   );
 }

@@ -121,14 +121,14 @@ export default function Home() {
         >
           Discover Mysuru Like Never Before
         </Typography>
-        <Typography variant="h6" color="text.secondary" pb={10}>
+        <Typography variant="h6" color="text.secondary" pb={7}>
           Uncover the best places, experiences, and secrets of the city!
         </Typography>
       </Box>
 
       {/* Search Bar */}
       <Container maxWidth="md" sx={{ position: "relative" }} ref={dropdownRef}>
-        <Box sx={{ mt: 5, mb: 5 }}>
+        <Box sx={{ mt: 5, mb: 5, pb: 3 }}>
           <SearchBar
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -193,6 +193,10 @@ export default function Home() {
       </Container>
 
       {/* Dynamic Sections */}
+      <Container maxWidth="lg">
+        <QuickCategories />
+      </Container>
+
       <Container maxWidth="lg">
         <FeaturedTopics />
       </Container>

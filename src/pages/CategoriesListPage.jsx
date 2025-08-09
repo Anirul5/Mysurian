@@ -24,7 +24,8 @@ const formatCategoryName = (name) => {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-const placeholderImage = "https://placehold.co/400x300?text=No+Image&font=roboto";
+const placeholderImage =
+  "https://placehold.co/400x300?text=No+Image&font=roboto";
 
 const CategoriesListPage = () => {
   const navigate = useNavigate();
@@ -59,67 +60,73 @@ const CategoriesListPage = () => {
   }
 
   return (
-    <Container sx={{ py:  5}}>
+    <Container sx={{ py: 5 }}>
       <Typography variant="h4" align="center" gutterBottom>
         Browse Categories
       </Typography>
 
       <Grid container spacing={4} justifyContent="center">
         {categories.map((category) => {
-  const {
-    id,
-    description = "Explore top listings under this category.",
-    imageUrl = placeholderImage,
-  } = category;
+          const {
+            id,
+            description = "Explore top listings under this category.",
+            imageUrl = placeholderImage,
+          } = category;
 
-  const color = categoryColors[id] || categoryColors.default;
-  const displayName = id ? formatCategoryName(id) : "Unnamed Category";
+          const color = categoryColors[id] || categoryColors.default;
+          const displayName = id ? formatCategoryName(id) : "Unnamed Category";
 
-  return (
-    <Grid item key={id || Math.random()}>
-      <Card
-        elevation={4}
-        sx={{
-          minWidth: { xs: 240, sm: 280 },
-          maxWidth: 320,
-          minHeight: 200,
-          height: { xs: 280, sm: 300, md: 340 },
-          borderTop: `6px solid`,
-          borderColor: `${color}.main`,
-          borderRadius: 3,
-          transition: "transform 0.3s ease, box-shadow 0.3s ease",
-          "&:hover": {
-            transform: "translateY(-5px)",
-            boxShadow: 6,
-          },
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <CardActionArea onClick={() => navigate(`/category/${id}`)} sx={{ height: "100%" }}>
-          <CardMedia
-            component="img"
-            height="140"
-            image={imageUrl || placeholderImage}
-            alt={displayName}
-            onError={(e) => {
-              e.target.src = placeholderImage;
-            }}
-          />
-          <CardContent sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" gutterBottom textAlign="center">
-              {displayName}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" textAlign="center">
-              {description}
-            </Typography>
-          </CardContent>
-        </CardActionArea>
-      </Card>
-    </Grid>
-  );
-})}
-
+          return (
+            <Grid item key={id || Math.random()}>
+              <Card
+                elevation={4}
+                sx={{
+                  minWidth: { xs: 240, sm: 280 },
+                  maxWidth: 320,
+                  minHeight: 200,
+                  height: { xs: 280, sm: 300, md: 340 },
+                  borderTop: `6px solid`,
+                  borderColor: `${color}.main`,
+                  borderRadius: 3,
+                  transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                  "&:hover": {
+                    transform: "translateY(-5px)",
+                    boxShadow: 6,
+                  },
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <CardActionArea
+                  onClick={() => navigate(`/category/${id}`)}
+                  sx={{ height: "100%" }}
+                >
+                  <CardMedia
+                    component="img"
+                    height="140"
+                    image={category.imageForCategory || placeholderImage}
+                    alt={displayName}
+                    onError={(e) => {
+                      e.target.src = placeholderImage;
+                    }}
+                  />
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" gutterBottom textAlign="center">
+                      {displayName}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      textAlign="center"
+                    >
+                      {description}
+                    </Typography>
+                  </CardContent>
+                </CardActionArea>
+              </Card>
+            </Grid>
+          );
+        })}
       </Grid>
     </Container>
   );

@@ -162,7 +162,7 @@ function SearchBar({
 
   return (
     <div style={{ position: "relative" }} ref={dropdownRef}>
-      <Stack
+      {/* <Stack
         direction="row"
         spacing={1}
         mb={1}
@@ -186,7 +186,7 @@ function SearchBar({
             color={selectedCategory === cat ? "secondary" : "default"}
           />
         ))}
-      </Stack>
+      </Stack> */}
       <form onSubmit={handleSubmit}>
         <TextField
           fullWidth

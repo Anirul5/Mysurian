@@ -1,57 +1,76 @@
-// EditorsPick.jsx
-import { Box, Typography, Grid, Card, CardContent } from "@mui/material";
-import StarIcon from "@mui/icons-material/Star";
+// Editor's Pick
+
+import {
+  Typography,
+  Grid,
+  Card,
+  CardActionArea,
+  CardMedia,
+  CardContent,
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import useAllItems from "../hooks/useAllItems";
 
-function EditorsPick() {
+export default function EditorsPick() {
   const { allItems, loading } = useAllItems();
   const navigate = useNavigate();
 
   if (loading) return null;
 
-  const picks = allItems.filter((item) => item.featured === "1").slice(0, 6);
+  // Fisher–Yates shuffle to randomize
+  const shuffleArray = (array) => {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+
+  // Filter + shuffle + take first 6
+  const picks = shuffleArray(
+    allItems.filter((item) => item.featured === "1" || item.featured === true)
+  ).slice(0, 6);
 
   const handleClick = (item) => {
     navigate(`/${item.category}/${item.id}`);
   };
 
   return (
-    <Box my={4}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        <StarIcon fontSize="medium" sx={{ mr: 1, color: "#eaee07ff" }} />
+    <div style={{ padding: "2rem", paddingTop: "0" }}>
+      <Typography variant="overline" fontSize={18}>
         Editor's Pick
       </Typography>
+
       <Grid
         container
-        spacing={2}
-        columns={18}
-        sx={{ justifyContent: "center" }}
+        spacing={{ xs: 2, md: 3 }}
+        columns={{ xs: 4, sm: 8, md: 15 }}
       >
-        {picks.map((item, idx) => (
-          <Grid item xs={6} sm={4} md={2} key={idx} size={3} minWidth={120}>
+        {picks.map((item) => (
+          <Grid item size={{ xs: 4, sm: 4, md: 3 }} key={item.id}>
             <Card
               sx={{
                 cursor: "pointer",
                 "&:hover": { boxShadow: 6 },
-                height: 120,
-                width: "100%",
               }}
               onClick={() => handleClick(item)}
             >
-              <CardContent>
-                <StarIcon fontSize="small" sx={{ mr: 1 }} />
-                <br />
-                <Typography variant="caption" fontWeight={400}>
-                  {item.name || "Unnamed Item"}
-                </Typography>
-              </CardContent>
+              <CardActionArea sx={{ maxHeight: 200 }}>
+                <CardMedia
+                  component="img"
+                  height="160"
+                  image={item.image || "/fallback.jpg"}
+                  alt={item.name || "Editor's Pick"}
+                />
+                <CardContent>
+                  <Typography variant="subtitle">{item.name}</Typography>
+                </CardContent>
+              </CardActionArea>
             </Card>
           </Grid>
         ))}
       </Grid>
-    </Box>
+    </div>
   );
 }
-
-export default EditorsPick;
