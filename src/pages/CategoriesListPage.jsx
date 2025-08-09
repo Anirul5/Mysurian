@@ -9,11 +9,13 @@ import {
   Box,
   CircularProgress,
   Container,
+  Button,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { categoryColors } from "../utils/categoryColors";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 const formatCategoryName = (name) => {
   return name
@@ -61,9 +63,19 @@ const CategoriesListPage = () => {
 
   return (
     <Container sx={{ py: 5 }}>
-      <Typography variant="h4" align="center" gutterBottom>
-        Browse Categories
-      </Typography>
+      <Box sx={{ display: "flex", width: "80%", justifySelf: "center" }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          color="secondary"
+          onClick={() => navigate(`/`)}
+          sx={{ mb: 2 }}
+        >
+          Back
+        </Button>
+        <Typography variant="h4" align="center" gutterBottom width={"100%"}>
+          Browse Categories
+        </Typography>
+      </Box>
 
       <Grid container spacing={4} justifyContent="center">
         {categories.map((category) => {

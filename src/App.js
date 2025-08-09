@@ -1,25 +1,25 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Home from './pages/Home';
-import Gyms from './pages/Gyms';
-import Hotels from './pages/Hotels';
-import Layout from './components/Layout';
-import Restaurants from './pages/Restaurants';
-import Events from './pages/Events';
-import DetailPage from './pages/DetailPage';
-import ScrollToTop from './components/ScrollToTop';
-import NotFound from './pages/NotFound';
-import { HelmetProvider } from 'react-helmet-async';
-import SearchResults from './pages/SearchResults';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import Home from "./pages/Home";
+import Gyms from "./pages/Gyms";
+import Hotels from "./pages/Hotels";
+import Layout from "./components/Layout";
+import Restaurants from "./pages/Restaurants";
+import Events from "./pages/Events";
+import DetailPage from "./pages/DetailPage";
+import ScrollToTop from "./components/ScrollToTop";
+import NotFound from "./pages/NotFound";
+import { HelmetProvider } from "react-helmet-async";
+import SearchResults from "./pages/SearchResults";
 import AdminLogin from "./pages/AdminLogin";
 import AdminPage from "./pages/AdminPage";
-import ManageListings from "./pages/ManageListings";
+import AdminManageListings from "./pages/AdminManageListings";
 import ListingForm from "./pages/ListingForm";
 import SchemaEditor from "./pages/SchemaEditor";
 import CategoryPage from "./pages/CategoryPage";
 import CategoriesListPage from "./pages/CategoriesListPage";
-import PrivateRoute from './components/PrivateRoute';
+import PrivateRoute from "./components/PrivateRoute";
 
 function App() {
   return (
@@ -28,63 +28,63 @@ function App() {
         <Navbar />
         <ScrollToTop />
         <Layout>
-        <Routes>
-          <Route path="/admin-login" element={<AdminLogin />} />
-          <Route
-            path="/admin"
-            element={
-              <PrivateRoute>
-                <AdminPage />
-              </PrivateRoute>
-            }
-          />
+          <Routes>
+            <Route path="/admin-login" element={<AdminLogin />} />
+            <Route
+              path="/admin"
+              element={
+                <PrivateRoute>
+                  <AdminPage />
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/admin/:categoryId/listings"
-            element={
-              <PrivateRoute>
-                <ManageListings />
-              </PrivateRoute>
-            }
-          />
+            <Route
+              path="/admin/:categoryId/listings"
+              element={
+                <PrivateRoute>
+                  <AdminManageListings />
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/admin/:categoryId/listings/new"
-            element={
-              <PrivateRoute>
-                <ListingForm />
-              </PrivateRoute>
-            }
-          />
+            <Route
+              path="/admin/:categoryId/listings/new"
+              element={
+                <PrivateRoute>
+                  <ListingForm />
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/admin/:categoryId/listings/:listingId/edit"
-            element={
-              <PrivateRoute>
-                <ListingForm />
-              </PrivateRoute>
-            }
-          />
+            <Route
+              path="/admin/:categoryId/listings/:listingId/edit"
+              element={
+                <PrivateRoute>
+                  <ListingForm />
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/admin/:categoryId/schema"
-            element={
-              <PrivateRoute>
-                <SchemaEditor />
-              </PrivateRoute>
-            }
-          />
-          <Route path="/" element={<Home />} />
-          <Route path="/category/:categoryName" element={<CategoryPage />} />
-          <Route path="/categories" element={<CategoriesListPage />} />
-          <Route path="/gyms" element={<Gyms />} />
-          <Route path="/hotels" element={<Hotels />} />
-          <Route path="/restaurants" element={<Restaurants />} />
-          <Route path="/events" element={<Events />} />
-          <Route path="/:collectionName/:id" element={<DetailPage />} />
-          <Route path="/search" element={<SearchResults />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            <Route
+              path="/admin/:categoryId/schema"
+              element={
+                <PrivateRoute>
+                  <SchemaEditor />
+                </PrivateRoute>
+              }
+            />
+            <Route path="/" element={<Home />} />
+            <Route path="/category/:categoryName" element={<CategoryPage />} />
+            <Route path="/categories" element={<CategoriesListPage />} />
+            <Route path="/gyms" element={<Gyms />} />
+            <Route path="/hotels" element={<Hotels />} />
+            <Route path="/restaurants" element={<Restaurants />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/:collectionName/:id" element={<DetailPage />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </Layout>
       </Router>
     </HelmetProvider>

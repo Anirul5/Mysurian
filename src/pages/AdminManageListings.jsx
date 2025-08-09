@@ -18,7 +18,7 @@ import { db } from "../firebaseConfig";
 import { Add, Edit, Delete } from "@mui/icons-material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-export default function ManageListings() {
+export default function AdminManageListings() {
   const { categoryId } = useParams();
   const navigate = useNavigate();
   const [listings, setListings] = useState([]);

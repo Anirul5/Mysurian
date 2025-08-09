@@ -11,18 +11,20 @@ import {
   Rating,
   InputAdornment,
   Container,
+  Button,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useParams, Link } from "react-router-dom";
 import { collection, getDocs, getDoc, doc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { categoryColors } from "../utils/categoryColors";
-import { Breadcrumbs, Link as MuiLink } from "@mui/material";
-import { ArrowBack } from "@mui/icons-material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { useNavigate } from "react-router-dom";
 
 const fallbackImage = "/fallback.jpg"; // Replace with your fallback path
 
 const CategoryPage = () => {
+  const navigate = useNavigate();
   const { categoryName, categoryId, category } = useParams();
   const [allListings, setAllListings] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -87,37 +89,31 @@ const CategoryPage = () => {
         textAlign="center"
         sx={{ width: "80%", justifySelf: "center" }}
       >
-        <Box mb={2}>
-          <Breadcrumbs aria-label="breadcrumb">
-            <MuiLink
-              component={Link}
-              to="/categories"
-              underline="hover"
-              color="inherit"
-            >
-              <ArrowBack
-                sx={{ verticalAlign: "middle", mr: 0.5 }}
-                fontSize="inherit"
-              />
-              Categories
-            </MuiLink>
-            <Typography color="text.primary">
-              {category?.replace(/-/g, " ")}
-            </Typography>
-          </Breadcrumbs>
-        </Box>
-        <Typography
-          variant="h4"
-          gutterBottom
-          textTransform="capitalize"
-          style={{ fontSize: "clamp(1rem, 2vw, 2.5rem)" }}
+        <Box
+          mb={2}
+          sx={{ display: "flex", width: "100%", justifySelf: "center" }}
         >
-          {categoryName
-            .replaceAll("_", " ")
-            .split(" ")
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(" ")}
-        </Typography>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            color="secondary"
+            onClick={() => navigate(`/categories`)}
+            sx={{ mb: 2 }}
+          >
+            Back
+          </Button>
+          <Typography
+            variant="h4"
+            gutterBottom
+            textTransform="capitalize"
+            style={{ fontSize: "clamp(1rem, 2vw, 2.5rem)", width: "100%" }}
+          >
+            {categoryName
+              .replaceAll("_", " ")
+              .split(" ")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ")}
+          </Typography>
+        </Box>
         <TextField
           fullWidth
           variant="outlined"

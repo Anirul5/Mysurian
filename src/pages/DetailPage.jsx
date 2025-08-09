@@ -26,8 +26,11 @@ import { ArrowBack } from "@mui/icons-material";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
 import useAllItems from "../hooks/useAllItems";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { useNavigate } from "react-router-dom";
 
 export default function DetailPage() {
+  const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
   const category = location.pathname.split("/")[1];
@@ -125,34 +128,14 @@ export default function DetailPage() {
           {/* Breadcrumbs */}
           <Box mb={2}>
             <Breadcrumbs aria-label="breadcrumb">
-              <ArrowBack
-                sx={{ verticalAlign: "middle", color: "secondary.main" }}
+              <Button
+                startIcon={<ArrowBackIcon />}
                 color="secondary"
-                component={Link}
-                to={`/category/${category}`}
-                fontSize="inherit"
-              />
-              <MuiLink
-                component={Link}
-                to="/categories"
-                underline="hover"
-                color="inherit"
+                onClick={() => navigate(`/category/${category}`)}
+                sx={{ mb: 2 }}
               >
-                Categories
-              </MuiLink>
-              <MuiLink
-                component={Link}
-                to={`/category/${category}`}
-                underline="hover"
-                color="inherit"
-              >
-                {category
-                  ?.replace(/_/g, " ")
-                  .split(" ")
-                  .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                  .join(" ")}
-              </MuiLink>
-              <Typography color="text.primary">{item?.name}</Typography>
+                Back
+              </Button>
             </Breadcrumbs>
           </Box>
 
