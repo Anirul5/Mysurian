@@ -31,6 +31,7 @@ const DEFAULT_FIELDS = {
   image: { value: "", type: "String", required: false },
   mapurl: { value: "", type: "String", required: false },
   gallery: { value: "", type: "String", required: false },
+  views: { value: 0, type: "Number" },
 };
 
 const ListingForm = () => {

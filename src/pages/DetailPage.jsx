@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useLocation, Link } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, increment, updateDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import {
   Container,
@@ -28,6 +28,7 @@ import "react-image-lightbox/style.css";
 import useAllItems from "../hooks/useAllItems";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
+import { useRef } from "react";
 
 export default function DetailPage() {
   const navigate = useNavigate();
@@ -39,6 +40,8 @@ export default function DetailPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
   const { allItems, loading: allItemsLoading } = useAllItems();
+  const hasIncremented = useRef(false);
+
   const placeholderImage =
     "https://images.unsplash.com/photo-1679239108020-aca50acd5f00?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZnJlZSUyMGltYWdlcyUyMGNpdHl8ZW58MHx8MHx8fDA%3D";
   const placeholderCover =
@@ -54,10 +57,23 @@ export default function DetailPage() {
         const snapshot = await getDoc(docRef);
 
         if (snapshot.exists()) {
+          const data = snapshot.data();
+
+          // Unique key for this listing
+          const viewKey = `viewed-${collectionName}-${id}`;
+          let addedViews = 0;
+
+          if (!sessionStorage.getItem(viewKey)) {
+            sessionStorage.setItem(viewKey, "true"); // ✅ set first
+            await updateDoc(docRef, { views: increment(1) });
+            addedViews = 1;
+          }
+
           setItem({
             id: snapshot.id,
             category: collectionName,
-            ...snapshot.data(),
+            ...data,
+            views: (data.views || 0) + addedViews,
           });
         } else {
           console.warn("Item not found");
@@ -87,15 +103,18 @@ export default function DetailPage() {
   // FIX: Parse gallery from ["url1, url2, ..."] into a clean array
   const parseGallery = (gallery) => {
     if (!gallery) return [];
-    if (Array.isArray(gallery) && typeof gallery[0] === "string") {
-      if (gallery.length === 1 && gallery[0].includes(",")) {
-        return gallery[0].split(",").map((url) => url.trim());
-      }
+
+    if (typeof gallery === "string") {
+      return gallery
+        .split(",")
+        .map((url) => url.trim())
+        .filter((url) => url.length > 0);
+    }
+
+    if (Array.isArray(gallery)) {
       return gallery.map((url) => url.trim());
     }
-    if (typeof gallery === "string") {
-      return gallery.split(",").map((url) => url.trim());
-    }
+
     return [];
   };
 
@@ -231,10 +250,10 @@ export default function DetailPage() {
           )}
 
           {/* Gallery */}
-          {parseGallery(item?.gallery).length > 0 && (
+          {galleryItems.length > 0 && (
             <>
               <Grid container spacing={2} mb={3}>
-                {parseGallery(item?.gallery).map((img, index) => (
+                {galleryItems.map((img, index) => (
                   <Grid item xs={12} sm={6} md={4} key={index}>
                     <Card
                       onClick={() => {
