@@ -266,23 +266,20 @@ export default function AdminPage() {
             }
           />
           <Box mt={2}>
-            <Typography variant="subtitle1">Category Image</Typography>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                setImageFile(e.target.files[0]);
-                setFormData({ ...formData, imageForCategory: "" });
-              }}
+            <Typography variant="subtitle1">Category Image URL</Typography>
+            <TextField
+              margin="dense"
+              fullWidth
+              placeholder="Paste image URL here"
+              value={formData.imageForCategory}
+              onChange={(e) =>
+                setFormData({ ...formData, imageForCategory: e.target.value })
+              }
             />
-            {(formData.imageForCategory || imageFile) && (
+            {formData.imageForCategory && (
               <Box mt={1}>
                 <img
-                  src={
-                    imageFile
-                      ? URL.createObjectURL(imageFile)
-                      : formData.imageForCategory
-                  }
+                  src={formData.imageForCategory}
                   alt="Preview"
                   style={{
                     width: "100%",

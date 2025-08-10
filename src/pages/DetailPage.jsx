@@ -39,7 +39,6 @@ export default function DetailPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
   const { allItems, loading: allItemsLoading } = useAllItems();
-
   const placeholderImage =
     "https://images.unsplash.com/photo-1679239108020-aca50acd5f00?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZnJlZSUyMGltYWdlcyUyMGNpdHl8ZW58MHx8MHx8fDA%3D";
   const placeholderCover =
@@ -84,6 +83,23 @@ export default function DetailPage() {
       });
     }
   };
+
+  // FIX: Parse gallery from ["url1, url2, ..."] into a clean array
+  const parseGallery = (gallery) => {
+    if (!gallery) return [];
+    if (Array.isArray(gallery) && typeof gallery[0] === "string") {
+      if (gallery.length === 1 && gallery[0].includes(",")) {
+        return gallery[0].split(",").map((url) => url.trim());
+      }
+      return gallery.map((url) => url.trim());
+    }
+    if (typeof gallery === "string") {
+      return gallery.split(",").map((url) => url.trim());
+    }
+    return [];
+  };
+
+  const galleryItems = parseGallery(item?.gallery);
 
   const isValidMapEmbed = (url) =>
     typeof url === "string" &&
@@ -215,27 +231,14 @@ export default function DetailPage() {
           )}
 
           {/* Gallery */}
-          {loading ? (
-            <Grid container spacing={2} mb={3}>
-              {[1, 2, 3].map((i) => (
-                <Grid item xs={12} sm={6} md={4} key={i}>
-                  <Skeleton
-                    variant="rectangular"
-                    width="100%"
-                    height={180}
-                    sx={{ borderRadius: 2 }}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          ) : Array.isArray(item.gallery) && item.gallery.length > 1 ? (
+          {parseGallery(item?.gallery).length > 0 && (
             <>
               <Grid container spacing={2} mb={3}>
-                {item.gallery.slice(1).map((img, index) => (
+                {parseGallery(item?.gallery).map((img, index) => (
                   <Grid item xs={12} sm={6} md={4} key={index}>
                     <Card
                       onClick={() => {
-                        setPhotoIndex(index + 1);
+                        setPhotoIndex(index);
                         setLightboxOpen(true);
                       }}
                       sx={{
@@ -250,7 +253,7 @@ export default function DetailPage() {
                         height="180"
                         image={img || placeholderImage}
                         onError={(e) => (e.target.src = placeholderImage)}
-                        alt={`${item.name} image ${index + 2}`}
+                        alt={`${item.name} image ${index + 1}`}
                         sx={{
                           objectFit: "cover",
                           transition: "transform 0.5s ease",
@@ -263,42 +266,27 @@ export default function DetailPage() {
 
               {lightboxOpen && (
                 <Lightbox
-                  mainSrc={item.gallery[photoIndex]}
-                  nextSrc={item.gallery[(photoIndex + 1) % item.gallery.length]}
+                  mainSrc={galleryItems[photoIndex]}
+                  nextSrc={galleryItems[(photoIndex + 1) % galleryItems.length]}
                   prevSrc={
-                    item.gallery[
-                      (photoIndex + item.gallery.length - 1) %
-                        item.gallery.length
+                    galleryItems[
+                      (photoIndex + galleryItems.length - 1) %
+                        galleryItems.length
                     ]
                   }
                   onCloseRequest={() => setLightboxOpen(false)}
                   onMovePrevRequest={() =>
                     setPhotoIndex(
-                      (photoIndex + item.gallery.length - 1) %
-                        item.gallery.length
+                      (photoIndex + galleryItems.length - 1) %
+                        galleryItems.length
                     )
                   }
                   onMoveNextRequest={() =>
-                    setPhotoIndex((photoIndex + 1) % item.gallery.length)
+                    setPhotoIndex((photoIndex + 1) % galleryItems.length)
                   }
                 />
               )}
             </>
-          ) : item.gallery?.length === 1 ? (
-            <Card sx={{ mb: 3 }}>
-              <CardMedia
-                component="img"
-                height="240"
-                image={item.gallery[0] || placeholderImage}
-                onError={(e) => (e.target.src = placeholderImage)}
-                alt={`${item.name} image`}
-                sx={{ objectFit: "cover", borderRadius: 2 }}
-              />
-            </Card>
-          ) : (
-            <Typography variant="body2" color="text.secondary" mb={2}>
-              No gallery available.
-            </Typography>
           )}
 
           {/* Description */}
@@ -383,10 +371,10 @@ export default function DetailPage() {
               height={300}
               sx={{ borderRadius: 2 }}
             />
-          ) : isValidMapEmbed(item?.mapEmbed) ? (
+          ) : isValidMapEmbed(item?.mapurl) ? (
             <Box sx={{ mb: 4, borderRadius: 2, overflow: "hidden" }}>
               <iframe
-                src={item.mapEmbed}
+                src={item.mapurl}
                 width="100%"
                 height="300"
                 style={{ border: 0 }}

@@ -91,19 +91,22 @@ const CategoryPage = () => {
       >
         <Box
           mb={2}
-          sx={{ display: "flex", width: "100%", justifySelf: "center" }}
+          sx={{
+            display: "flex",
+            width: "100%",
+            justifySelf: "center",
+            alignItems: "center",
+          }}
         >
           <Button
             startIcon={<ArrowBackIcon />}
             color="secondary"
             onClick={() => navigate(`/categories`)}
-            sx={{ mb: 2 }}
           >
             Back
           </Button>
           <Typography
             variant="h4"
-            gutterBottom
             textTransform="capitalize"
             style={{ fontSize: "clamp(1rem, 2vw, 2.5rem)", width: "100%" }}
           >
@@ -147,7 +150,7 @@ const CategoryPage = () => {
                   sx={{
                     minWidth: { xs: 240, sm: 280 },
                     maxWidth: 320,
-                    minHeight: 200,
+                    minHeight: 350,
                     height: { xs: 280, sm: 300, md: 340 },
                     display: "flex",
                     flexDirection: "column",
