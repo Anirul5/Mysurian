@@ -19,9 +19,9 @@ export default function FeaturedTopics() {
 
   // Filter top 9 by searchcount
   const topics = allItems
-    .filter((item) => typeof item.searchcount === "number")
-    .sort((a, b) => b.searchcount - a.searchcount)
-    .slice(0, 9);
+    .filter((item) => typeof item.views === "number")
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 5);
 
   const handleClick = (item) => {
     navigate(`/${item.category}/${item.id}`);

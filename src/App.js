@@ -38,7 +38,6 @@ function App() {
                 </PrivateRoute>
               }
             />
-
             <Route
               path="/admin/:categoryId/listings"
               element={
@@ -47,7 +46,6 @@ function App() {
                 </PrivateRoute>
               }
             />
-
             <Route
               path="/admin/:categoryId/listings/new"
               element={
@@ -56,7 +54,6 @@ function App() {
                 </PrivateRoute>
               }
             />
-
             <Route
               path="/admin/:categoryId/listings/:listingId/edit"
               element={
@@ -65,7 +62,6 @@ function App() {
                 </PrivateRoute>
               }
             />
-
             <Route
               path="/admin/:categoryId/schema"
               element={

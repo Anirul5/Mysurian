@@ -60,7 +60,7 @@ export default function QuickCategories() {
         spacing={{ xs: 2, md: 3 }}
         columns={{ xs: 4, sm: 8, md: 15 }}
       >
-        {categories.map((cat) => (
+        {categories.slice(0, 4).map((cat) => (
           <Grid item key={cat.id} size={{ xs: 4, sm: 4, md: 3 }}>
             <Card sx={{ cursor: "pointer", "&:hover": { boxShadow: 6 } }}>
               <CardActionArea
@@ -82,6 +82,27 @@ export default function QuickCategories() {
             </Card>
           </Grid>
         ))}
+        <Grid item size={{ xs: 4, sm: 4, md: 3 }}>
+          <Card sx={{ cursor: "pointer", "&:hover": { boxShadow: 6 } }}>
+            <CardActionArea
+              onClick={() => navigate(`/categories`)}
+              sx={{
+                maxHeight: 200,
+                height: "100%",
+              }}
+            >
+              <CardMedia
+                // component="img"
+                height="160"
+              />
+              <CardContent>
+                <Typography variant="subtitle">
+                  {"See all categories"}
+                </Typography>
+              </CardContent>
+            </CardActionArea>
+          </Card>
+        </Grid>
       </Grid>
     </div>
   );
