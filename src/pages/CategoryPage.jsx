@@ -101,7 +101,7 @@ const CategoryPage = () => {
           <Button
             startIcon={<ArrowBackIcon />}
             color="secondary"
-            onClick={() => navigate(`/categories`)}
+            onClick={() => navigate(-1)}
           >
             Back
           </Button>

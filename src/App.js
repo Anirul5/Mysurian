@@ -20,68 +20,76 @@ import SchemaEditor from "./pages/SchemaEditor";
 import CategoryPage from "./pages/CategoryPage";
 import CategoriesListPage from "./pages/CategoriesListPage";
 import PrivateRoute from "./components/PrivateRoute";
+import { HomeDataProvider } from "./context/HomeDataContext";
+import FavoritesPage from "./pages/FavoritesPage";
 
 function App() {
   return (
     <HelmetProvider>
       <Router>
         <Navbar />
-        <ScrollToTop />
-        <Layout>
-          <Routes>
-            <Route path="/admin-login" element={<AdminLogin />} />
-            <Route
-              path="/admin"
-              element={
-                <PrivateRoute>
-                  <AdminPage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/:categoryId/listings"
-              element={
-                <PrivateRoute>
-                  <AdminManageListings />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/:categoryId/listings/new"
-              element={
-                <PrivateRoute>
-                  <ListingForm />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/:categoryId/listings/:listingId/edit"
-              element={
-                <PrivateRoute>
-                  <ListingForm />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/:categoryId/schema"
-              element={
-                <PrivateRoute>
-                  <SchemaEditor />
-                </PrivateRoute>
-              }
-            />
-            <Route path="/" element={<Home />} />
-            <Route path="/category/:categoryName" element={<CategoryPage />} />
-            <Route path="/categories" element={<CategoriesListPage />} />
-            <Route path="/gyms" element={<Gyms />} />
-            <Route path="/hotels" element={<Hotels />} />
-            <Route path="/restaurants" element={<Restaurants />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/:collectionName/:id" element={<DetailPage />} />
-            <Route path="/search" element={<SearchResults />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Layout>
+        <HomeDataProvider>
+          <ScrollToTop />
+          <Layout>
+            <Routes>
+              <Route path="/admin-login" element={<AdminLogin />} />
+              <Route
+                path="/admin"
+                element={
+                  <PrivateRoute>
+                    <AdminPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/:categoryId/listings"
+                element={
+                  <PrivateRoute>
+                    <AdminManageListings />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/:categoryId/listings/new"
+                element={
+                  <PrivateRoute>
+                    <ListingForm />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/:categoryId/listings/:listingId/edit"
+                element={
+                  <PrivateRoute>
+                    <ListingForm />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/:categoryId/schema"
+                element={
+                  <PrivateRoute>
+                    <SchemaEditor />
+                  </PrivateRoute>
+                }
+              />
+              <Route path="/" element={<Home />} />
+              <Route
+                path="/category/:categoryName"
+                element={<CategoryPage />}
+              />
+              <Route path="/categories" element={<CategoriesListPage />} />
+              <Route path="/gyms" element={<Gyms />} />
+              <Route path="/hotels" element={<Hotels />} />
+              <Route path="/restaurants" element={<Restaurants />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/:collectionName/:id" element={<DetailPage />} />
+              <Route path="/search" element={<SearchResults />} />
+              <Route path="/favorites" element={<FavoritesPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Layout>
+        </HomeDataProvider>
       </Router>
     </HelmetProvider>
   );

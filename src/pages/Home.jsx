@@ -21,9 +21,10 @@ import { useNavigate } from "react-router-dom";
 import FeaturedTopics from "../components/FeaturedTopics";
 import EyesAreLookingAt from "../components/EyesAreLookingAt";
 import HomePageSkeleton from "../components/HomePageSkeleton";
-
 // Local optimized hero image
 import heroImage from "../assets/hero_mysuru.png"; // Save optimized jpg/webp in assets
+import { useHomeData } from "../context/HomeDataContext";
+import FullScreenLoader from "../context/HomeDataContext";
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,7 +42,8 @@ export default function Home() {
     events: "secondary",
     default: "default",
   };
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useHomeData();
+  const [loadings, setLoading] = useState(true);
 
   useEffect(() => {
     // Simulate API delay
@@ -49,6 +51,11 @@ export default function Home() {
       setLoading(false);
     }, 2000);
 
+    return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    // Simulate API or image loading
+    const timer = setTimeout(() => setLoading(false), 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -120,6 +127,10 @@ export default function Home() {
     setResults([]);
   };
 
+  if (loading) return <HomePageSkeleton />;
+
+  // if (loadings) return <FullScreenLoader />;
+
   return (
     <Container
       sx={{
@@ -161,9 +172,10 @@ export default function Home() {
         ) : (
           <Container>
             <Typography
-              variant="h1"
+              variant="h2"
               sx={{
                 display: "block",
+                mt: 5,
                 p: 2,
                 textShadow: "11px 8px 16px #0000008f",
               }}
@@ -256,7 +268,7 @@ export default function Home() {
       </Box>
 
       {loading ? (
-        <HomePageSkeleton />
+        HomePageSkeleton
       ) : (
         <>
           {/* Dynamic Sections */}
@@ -275,14 +287,14 @@ export default function Home() {
           <Container maxWidth="lg">
             <EyesAreLookingAt />
           </Container>
-
-          <Container maxWidth="lg">
-            <Box sx={{ mt: 5 }}>
-              <CallToAction />
-            </Box>
-          </Container>
         </>
       )}
+
+      <Container maxWidth="lg">
+        <Box sx={{ mt: 5 }}>
+          <CallToAction />
+        </Box>
+      </Container>
     </Container>
   );
 }

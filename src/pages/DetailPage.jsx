@@ -29,6 +29,10 @@ import useAllItems from "../hooks/useAllItems";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 import { useRef } from "react";
+import { auth } from "../firebaseConfig";
+import { onAuthStateChanged } from "firebase/auth";
+import { setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import FavoriteIcon from "@mui/icons-material/Favorite"; // filled heart
 
 export default function DetailPage() {
   const navigate = useNavigate();
@@ -46,6 +50,69 @@ export default function DetailPage() {
     "https://images.unsplash.com/photo-1679239108020-aca50acd5f00?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZnJlZSUyMGltYWdlcyUyMGNpdHl8ZW58MHx8MHx8fDA%3D";
   const placeholderCover =
     "https://images.unsplash.com/photo-1679239108020-aca50acd5f00?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZnJlZSUyMGltYWdlcyUyMGNpdHl8ZW58MHx8MHx8fDA%3D";
+
+  // Inside your component
+  const [user, setUser] = useState(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+
+        // Check if current item is in user's favorites
+        const userRef = doc(db, "users", currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const favs = userSnap.data().favorites || [];
+          setIsFavorite(favs.some((fav) => fav.id === id));
+        }
+      } else {
+        setUser(null);
+        setIsFavorite(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [id]);
+
+  const toggleFavorite = async () => {
+    if (!user) {
+      alert("Please log in to save favorites.");
+      return;
+    }
+
+    const userRef = doc(db, "users", user.uid);
+    const itemData = {
+      id,
+      category,
+      name: item.name,
+      image: item.image || placeholderImage,
+    };
+
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      await setDoc(userRef, {
+        name: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+        favorites: [itemData],
+      });
+      setIsFavorite(true);
+      return;
+    }
+
+    if (isFavorite) {
+      await updateDoc(userRef, {
+        favorites: arrayRemove(itemData),
+      });
+      setIsFavorite(false);
+    } else {
+      await updateDoc(userRef, {
+        favorites: arrayUnion(itemData),
+      });
+      setIsFavorite(true);
+    }
+  };
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -166,7 +233,7 @@ export default function DetailPage() {
               <Button
                 startIcon={<ArrowBackIcon />}
                 color="secondary"
-                onClick={() => navigate(`/category/${category}`)}
+                onClick={() => navigate(-1)}
                 sx={{ mb: 2 }}
               >
                 Back
@@ -243,7 +310,12 @@ export default function DetailPage() {
                   <ShareIcon />
                 </IconButton>
                 <IconButton sx={{ color: "#fff" }}>
-                  <FavoriteBorderIcon />
+                  <IconButton
+                    onClick={toggleFavorite}
+                    sx={{ color: isFavorite ? "red" : "#fff" }}
+                  >
+                    {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+                  </IconButton>
                 </IconButton>
               </Box>
             </Box>
