@@ -6,10 +6,16 @@ import {
   CardActionArea,
   CardMedia,
   CardContent,
+  Box,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useNavigate } from "react-router-dom";
 import useAllItems from "../hooks/useAllItems";
+import {
+  createTheme,
+  responsiveFontSizes,
+  ThemeProvider,
+} from "@mui/material/styles";
 
 export default function EyesAreLookingAt() {
   const { allItems, loading } = useAllItems();
@@ -26,41 +32,91 @@ export default function EyesAreLookingAt() {
 
   if (!eyes.length) return null;
 
-  return (
-    <div style={{ padding: "2rem", paddingTop: "0" }}>
-      <Typography variant="overline" fontSize={18}>
-        Eyes Are Looking At
-      </Typography>
+  let theme = createTheme();
+  theme = responsiveFontSizes(theme);
 
-      <Grid
-        container
-        spacing={{ xs: 2, md: 3 }}
-        columns={{ xs: 4, sm: 8, md: 15 }}
-      >
-        {eyes.map((item) => (
-          <Grid item size={{ xs: 4, sm: 4, md: 3 }} key={item.id}>
+  return (
+    <div>
+      <Box sx={{ mb: 4 }} maxWidth={"300px"}>
+        {/* Section Title */}
+        <Typography
+          variant="h6"
+          sx={{
+            backgroundColor: "#1e3d49",
+            color: "#fff",
+            padding: "8px 12px",
+          }}
+        >
+          Featured Topics
+        </Typography>
+
+        {/* Grid of Items */}
+        <Grid
+          container
+          spacing={1}
+          sx={{ mt: 1 }}
+          columns={{ xs: 6, sm: 9, md: 15 }}
+          height={"350px"}
+        >
+          {eyes.map((item) => (
+            <Grid item key={item.id} size={{ xs: 2, sm: 3, md: 5 }}>
+              <Card sx={{ cursor: "pointer", "&:hover": { boxShadow: 6 } }}>
+                <CardActionArea
+                  onClick={() => handleClick(item)}
+                  sx={{
+                    maxHeight: 200,
+                  }}
+                >
+                  <CardMedia
+                    component="img"
+                    height="100"
+                    image={item.image || "/fallback.jpg"}
+                    alt={item.name}
+                  />
+                  <ThemeProvider theme={theme}>
+                    <Typography
+                      variant="subtitle"
+                      display={"flex"}
+                      height={"35px"}
+                      textAlign={"center"}
+                      alignItems={"center"}
+                      justifyContent={"center"}
+                    >
+                      {item.name}
+                    </Typography>
+                  </ThemeProvider>
+                </CardActionArea>
+              </Card>
+            </Grid>
+          ))}
+          <Grid
+            item
+            size={{ xs: 4, sm: 4, md: 3 }}
+            sx={{ width: "100% !important" }}
+          >
             <Card
               sx={{
-                cursor: "pointer",
                 "&:hover": { boxShadow: 6 },
               }}
-              onClick={() => handleClick(item)}
             >
-              <CardActionArea sx={{ maxHeight: 200 }}>
+              <CardActionArea
+                sx={{
+                  maxHeight: 200,
+                  height: "100%",
+                }}
+              >
                 <CardMedia
-                  component="img"
+                  // component="img"
                   height="160"
-                  image={item.image || "/fallback.jpg"}
-                  alt={item.name || "Item"}
                 />
                 <CardContent>
-                  <Typography variant="subtitle">{item.name}</Typography>
+                  <Typography variant="subtitle">Currently trending</Typography>
                 </CardContent>
               </CardActionArea>
             </Card>
           </Grid>
-        ))}
-      </Grid>
+        </Grid>
+      </Box>
     </div>
   );
 }

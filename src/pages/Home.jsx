@@ -8,7 +8,11 @@ import {
   ListItem,
   ListItemText,
   Chip,
+  Grid,
+  CardContent,
+  Card,
   Skeleton,
+  Stack,
 } from "@mui/material";
 import SearchBar from "../components/SearchBar";
 import QuickCategories from "../components/QuickCategories";
@@ -270,27 +274,36 @@ export default function Home() {
       {loading ? (
         HomePageSkeleton
       ) : (
-        <>
-          {/* Dynamic Sections */}
-          <Container maxWidth="lg">
-            <QuickCategories />
-          </Container>
-
-          <Container maxWidth="lg">
-            <FeaturedTopics />
-          </Container>
-
-          <Container maxWidth="lg">
-            <FeaturedListings />
-          </Container>
-
-          <Container maxWidth="lg">
-            <EyesAreLookingAt />
-          </Container>
-        </>
+        <Grid
+          sx={{
+            width: "80%",
+            justifySelf: "center !important",
+            justifyContent: "center",
+          }}
+          container
+          columns={{ xs: 4, sm: 8, md: 15, lg: 15 }}
+          gap={2}
+          style={{ paddingTop: "2rem" }}
+        >
+          <Grid item size={{ xs: 4, sm: 4, md: 5, lg: 5 }} display={"contents"}>
+            {/* Dynamic Sections */}
+            <Grid maxWidth="lg">
+              <QuickCategories />
+            </Grid>
+            <Grid maxWidth="lg">
+              <FeaturedTopics />
+            </Grid>
+            <Grid maxWidth="lg">
+              <EyesAreLookingAt />
+            </Grid>
+          </Grid>
+        </Grid>
       )}
 
       <Container maxWidth="lg">
+        <Container maxWidth="lg">
+          <FeaturedListings />
+        </Container>
         <Box sx={{ mt: 5 }}>
           <CallToAction />
         </Box>

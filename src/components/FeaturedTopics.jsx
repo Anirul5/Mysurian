@@ -10,6 +10,11 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import useAllItems from "../hooks/useAllItems";
+import {
+  createTheme,
+  responsiveFontSizes,
+  ThemeProvider,
+} from "@mui/material/styles";
 
 export default function FeaturedTopics() {
   const { allItems, loading } = useAllItems();
@@ -27,43 +32,93 @@ export default function FeaturedTopics() {
     navigate(`/${item.category}/${item.id}`);
   };
 
+  let theme = createTheme();
+  theme = responsiveFontSizes(theme);
+
   return (
-    <div style={{ padding: "2rem", paddingTop: "0" }}>
-      <Typography variant="overline" fontSize={18}>
-        Featured Topics
-      </Typography>
-      <Grid
-        container
-        spacing={{ xs: 2, md: 3 }}
-        columns={{ xs: 4, sm: 8, md: 15 }}
-      >
-        {topics.map((item) => (
-          <Grid item size={{ xs: 4, sm: 4, md: 3 }} key={item.id}>
+    <div>
+      <Box sx={{ mb: 4 }} maxWidth={"300px"}>
+        {/* Section Title */}
+        <Typography
+          variant="h6"
+          sx={{
+            backgroundColor: "#1e3d49",
+            color: "#fff",
+            padding: "8px 12px",
+          }}
+        >
+          Featured Topics
+        </Typography>
+
+        {/* Grid of Items */}
+        <Grid
+          container
+          spacing={1}
+          sx={{ mt: 1 }}
+          columns={{ xs: 6, sm: 9, md: 15 }}
+          height={"350px"}
+        >
+          {topics.map((item) => (
+            <Grid item key={item.id} size={{ xs: 2, sm: 3, md: 5 }}>
+              <Card sx={{ cursor: "pointer", "&:hover": { boxShadow: 6 } }}>
+                <CardActionArea
+                  onClick={() => handleClick(item)}
+                  sx={{
+                    maxHeight: 200,
+                  }}
+                >
+                  <CardMedia
+                    component="img"
+                    height="100"
+                    image={item.image || "/fallback.jpg"}
+                    alt={item.name}
+                  />
+                  <ThemeProvider theme={theme}>
+                    <Typography
+                      variant="subtitle"
+                      display={"flex"}
+                      height={"35px"}
+                      textAlign={"center"}
+                      alignItems={"center"}
+                      justifyContent={"center"}
+                    >
+                      {item.name}
+                    </Typography>
+                  </ThemeProvider>
+                </CardActionArea>
+              </Card>
+            </Grid>
+          ))}
+          <Grid
+            item
+            size={{ xs: 4, sm: 4, md: 3 }}
+            sx={{ width: "100% !important" }}
+          >
             <Card
               sx={{
-                cursor: "pointer",
                 "&:hover": { boxShadow: 6 },
               }}
-              onClick={() => handleClick(item)}
             >
-              <CardActionArea sx={{ maxHeight: 200 }}>
+              <CardActionArea
+                sx={{
+                  maxHeight: 200,
+                  height: "100%",
+                }}
+              >
                 <CardMedia
-                  component="img"
+                  // component="img"
                   height="160"
-                  image={item.image || "/fallback.jpg"}
-                  alt={item.name || "Featured Topic"}
                 />
                 <CardContent>
-                  <Typography variant="subtitle">{item.name}</Typography>
-                  {/* <Typography variant="caption" color="text.secondary">
-                    {item.searchcount} searches
-                  </Typography> */}
+                  <Typography variant="subtitle">
+                    Most viewed items till date
+                  </Typography>
                 </CardContent>
               </CardActionArea>
             </Card>
           </Grid>
-        ))}
-      </Grid>
+        </Grid>
+      </Box>
     </div>
   );
 }
