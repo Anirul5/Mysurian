@@ -3,107 +3,305 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import {
   Grid,
-  Card,
-  CardActionArea,
-  CardMedia,
-  CardContent,
+  Paper,
   Typography,
+  Box,
+  Skeleton,
+  useMediaQuery,
+  useTheme,
+  Fade,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
-export default function QuickCategories() {
+export default function QuickCategories({ floating = false }) {
   const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const theme = useTheme();
+
+  // Detect screen size
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm")); // <600px
+  const isMobilePlusTab = useMediaQuery("(max-width:900px)");
+  const isTablet = useMediaQuery("(min-width:601px) and (max-width:1020px)");
+  const isTabletOrAbove = useMediaQuery(theme.breakpoints.up("md"));
+
+  const sliceCount = isMobile ? 5 : isTablet ? 4 : 6;
 
   useEffect(() => {
-    const CACHE_KEY = "quickCategories";
-    const CACHE_TIME_KEY = "quickCategoriesTimestamp";
-    const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in ms
-
     const fetchCategories = async () => {
       const querySnapshot = await getDocs(collection(db, "categories"));
       const categoriesData = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-
       setCategories(categoriesData);
-
-      // Save to sessionStorage
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify(categoriesData));
-      sessionStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+      setLoading(false);
     };
-
-    const cachedData = sessionStorage.getItem(CACHE_KEY);
-    const cachedTime = sessionStorage.getItem(CACHE_TIME_KEY);
-
-    if (
-      cachedData &&
-      cachedTime &&
-      Date.now() - parseInt(cachedTime) < CACHE_DURATION
-    ) {
-      // Use cached data
-      setCategories(JSON.parse(cachedData));
-    } else {
-      // Fetch new data
-      fetchCategories();
-    }
+    fetchCategories();
   }, []);
 
-  return (
-    <div style={{ padding: "2rem" }}>
-      <Typography variant="overline" fontSize={18}>
-        Categories
-      </Typography>
-      <Grid
-        container
-        spacing={{ xs: 2, md: 3 }}
-        columns={{ xs: 4, sm: 8, md: 15 }}
-      >
-        {categories.slice(0, 4).map((cat) => (
-          <Grid item key={cat.id} size={{ xs: 4, sm: 4, md: 3 }}>
-            <Card sx={{ cursor: "pointer", "&:hover": { boxShadow: 6 } }}>
-              <CardActionArea
-                onClick={() => navigate(`/category/${cat.id}`)}
-                sx={{
-                  maxHeight: 200,
-                }}
-              >
-                <CardMedia
-                  component="img"
-                  height="160"
-                  image={cat.imageForCategory || "/fallback.jpg"}
-                  alt={cat.name}
-                />
-                <CardContent>
-                  <Typography variant="subtitle">{cat.name}</Typography>
-                </CardContent>
-              </CardActionArea>
-            </Card>
+  // Loading skeletons
+  if (loading) {
+    if (isMobile || isMobilePlusTab) {
+      return (
+        <Box sx={{ display: "flex", overflowX: "auto", gap: 2, p: 1 }}>
+          {Array.from(new Array(5)).map((_, i) => (
+            <Skeleton
+              key={i}
+              variant="rectangular"
+              width={140}
+              height={140}
+              sx={{ borderRadius: 3, flex: "0 0 auto" }}
+            />
+          ))}
+        </Box>
+      );
+    }
+    return (
+      <Grid container spacing={3} justifyContent="center">
+        {Array.from(new Array(6)).map((_, i) => (
+          <Grid item xs={6} sm={4} md={3} key={i}>
+            <Skeleton
+              variant="rectangular"
+              width={220}
+              height={200}
+              sx={{ borderRadius: 3 }}
+            />
           </Grid>
         ))}
-        <Grid item size={{ xs: 4, sm: 4, md: 3 }}>
-          <Card sx={{ cursor: "pointer", "&:hover": { boxShadow: 6 } }}>
-            <CardActionArea
-              onClick={() => navigate(`/categories`)}
+      </Grid>
+    );
+  }
+
+  return (
+    <>
+      {/* 📱 Mobile: Horizontal Scroll */}
+      {(isMobile || isMobilePlusTab) && (
+        <Box
+          sx={{
+            display: "flex",
+            overflowX: "auto",
+            gap: 2,
+            p: 1,
+            scrollSnapType: "x mandatory",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
+          {categories.slice(0, sliceCount).map((cat) => (
+            <Fade in key={cat.id}>
+              <Paper
+                onClick={() => navigate(`/category/${cat.id}`)}
+                sx={{
+                  flex: "0 0 auto",
+                  width: 140,
+                  height: 140,
+                  p: 2,
+                  borderRadius: 3,
+                  textAlign: "center",
+                  alignContent: "center",
+                  cursor: "pointer",
+                  scrollSnapAlign: "start",
+                  "&:hover": { transform: "translateY(-3px)", boxShadow: 3 },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 45,
+                    height: 45,
+                    mx: "auto",
+                    borderRadius: "50%",
+                    bgcolor: "#FFF1E6",
+                    overflow: "hidden",
+                    mb: 1,
+                  }}
+                >
+                  <img
+                    src={
+                      cat.imageForCategory || "https://via.placeholder.com/60"
+                    }
+                    alt={cat.name}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                </Box>
+                <Typography fontWeight={700} fontSize={13}>
+                  {cat.name}
+                </Typography>
+              </Paper>
+            </Fade>
+          ))}
+
+          {/* See All */}
+          <Paper
+            onClick={() => navigate(`/categories`)}
+            sx={{
+              flex: "0 0 auto",
+              width: 140,
+              height: 140,
+              p: 2,
+              borderRadius: 3,
+              textAlign: "center",
+              cursor: "pointer",
+              scrollSnapAlign: "start",
+              "&:hover": { transform: "translateY(-3px)", boxShadow: 3 },
+            }}
+          >
+            <Box
               sx={{
-                maxHeight: 200,
-                height: "100%",
+                width: 45,
+                height: 45,
+                mx: "auto",
+                borderRadius: "50%",
+                bgcolor: "#FFF1E6",
+                overflow: "hidden",
+                mb: 1,
               }}
             >
-              <CardMedia
-                // component="img"
-                height="160"
+              <img
+                src="https://images.unsplash.com/photo-1600112356915-089abb8fc71a?q=80&w=600&auto=format"
+                alt="See All Categories"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
-              <CardContent>
-                <Typography variant="subtitle">
-                  {"See all categories"}
-                </Typography>
-              </CardContent>
-            </CardActionArea>
-          </Card>
-        </Grid>
-      </Grid>
-    </div>
+            </Box>
+            <Typography fontWeight={700} fontSize={13}>
+              See All
+            </Typography>
+          </Paper>
+        </Box>
+      )}
+      {/* 🖥️ Tablet & Desktop: Floating Grid (your pasted style) */}
+      {isTabletOrAbove && (
+        <Paper
+          elevation={floating ? 6 : 0}
+          sx={{
+            p: 3,
+            borderRadius: 3,
+            ...(floating && { backdropFilter: "blur(6px)" }),
+            background: "#ffeede",
+            mb: 5,
+          }}
+        >
+          <Grid container spacing={3} justifyContent="center">
+            {categories.slice(0, sliceCount).map((cat, i) => (
+              <Grid
+                item
+                xs={6}
+                sm={4}
+                md={3}
+                key={cat.id || i}
+                sx={{ display: "flex", justifyContent: "center" }}
+              >
+                <Paper
+                  onClick={() => navigate(`/category/${cat.id}`)}
+                  sx={{
+                    maxWidth: 250,
+                    p: 3,
+                    textAlign: "center",
+                    borderRadius: 3,
+                    cursor: "pointer",
+                    transition: "0.3s",
+                    height: "100%",
+                    width: "150px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    "&:hover": {
+                      transform: "translateY(-5px)",
+                      boxShadow: 4,
+                    },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 60,
+                      height: 60,
+                      mx: "auto",
+                      borderRadius: "50%",
+                      bgcolor: "#FFF1E6",
+                      color: "#B13D00",
+                      fontSize: 30,
+                      display: "grid",
+                      placeItems: "center",
+                      mb: 1,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <img
+                      src={
+                        cat.imageForCategory || "https://via.placeholder.com/60"
+                      }
+                      alt={cat.name}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  </Box>
+                  <Typography fontWeight={500}>{cat.name}</Typography>
+                </Paper>
+              </Grid>
+            ))}
+
+            {/* See All Card */}
+            <Grid
+              item
+              xs={6}
+              sm={4}
+              md={3}
+              sx={{ display: "flex", justifyContent: "center" }}
+            >
+              <Paper
+                onClick={() => navigate(`/categories`)}
+                sx={{
+                  width: "100%",
+                  maxWidth: 250,
+                  p: 3,
+                  textAlign: "center",
+                  borderRadius: 3,
+                  cursor: "pointer",
+                  transition: "0.3s",
+                  height: "100%",
+                  width: "150px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  "&:hover": {
+                    transform: "translateY(-5px)",
+                    boxShadow: 4,
+                  },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 60,
+                    height: 60,
+                    mx: "auto",
+                    borderRadius: "50%",
+                    bgcolor: "#FFF1E6",
+                    overflow: "hidden",
+                    mb: 1,
+                  }}
+                >
+                  <img
+                    src="https://images.unsplash.com/photo-1600112356915-089abb8fc71a?q=80&w=1594&auto=format"
+                    alt="See All Categories"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                </Box>
+                <Typography fontWeight={500}>See All Categories</Typography>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
+    </>
   );
 }

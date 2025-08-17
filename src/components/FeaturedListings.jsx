@@ -1,4 +1,3 @@
-// Editor's Pick
 import {
   Typography,
   Grid,
@@ -10,13 +9,13 @@ import {
 import { useNavigate } from "react-router-dom";
 import useAllItems from "../hooks/useAllItems";
 
-export default function EditorsPick() {
+export default function FeaturedListings() {
   const { allItems, loading } = useAllItems();
   const navigate = useNavigate();
 
   if (loading) return null;
 
-  // Fisher–Yates shuffle to randomize
+  // Shuffle array for randomness
   const shuffleArray = (array) => {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
@@ -26,36 +25,45 @@ export default function EditorsPick() {
     return arr;
   };
 
-  // Filter + shuffle + take first 6
   const picks = shuffleArray(
     allItems.filter((item) => item.featured === "1" || item.featured === true)
   ).slice(0, 6);
 
-  const handleClick = (item) => {
-    navigate(`/${item.category}/${item.id}`);
-  };
+  const handleClick = (item) => navigate(`/${item.category}/${item.id}`);
 
   return (
-    <div style={{ padding: "2rem", paddingTop: "0" }}>
-      <Typography variant="overline" fontSize={18}>
-        Editor's Pick
-      </Typography>
+    <div>
+      {/* <Typography variant="overline" fontSize={18}>
+        Editor&apos;s Pick
+      </Typography> */}
 
       <Grid
         container
-        spacing={{ xs: 2, md: 3 }}
-        columns={{ xs: 4, sm: 8, md: 15 }}
+        spacing={3}
+        sx={{ justifyContent: { xs: "center", md: "flex-start" } }}
       >
         {picks.map((item) => (
-          <Grid item size={{ xs: 4, sm: 4, md: 3 }} key={item.id}>
+          <Grid
+            item
+            xs={12}
+            sm={6}
+            md={4}
+            key={item.id}
+            sx={{ display: "flex", justifyContent: "center" }}
+          >
             <Card
               sx={{
+                width: "100%",
+                maxWidth: 300,
+                borderRadius: 3,
                 cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
                 "&:hover": { boxShadow: 6 },
               }}
               onClick={() => handleClick(item)}
             >
-              <CardActionArea sx={{ maxHeight: 200 }}>
+              <CardActionArea sx={{ flexGrow: 1 }}>
                 <CardMedia
                   component="img"
                   height="160"
@@ -63,7 +71,9 @@ export default function EditorsPick() {
                   alt={item.name || "Editor's Pick"}
                 />
                 <CardContent>
-                  <Typography variant="subtitle">{item.name}</Typography>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    {item.name}
+                  </Typography>
                 </CardContent>
               </CardActionArea>
             </Card>

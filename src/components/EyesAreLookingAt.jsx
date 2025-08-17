@@ -7,7 +7,6 @@ import {
   CardMedia,
   CardContent,
 } from "@mui/material";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useNavigate } from "react-router-dom";
 import useAllItems from "../hooks/useAllItems";
 
@@ -17,50 +16,50 @@ export default function EyesAreLookingAt() {
 
   if (loading) return null;
 
-  // Filter for items with "eyes" flag
-  const eyes = allItems.filter((item) => item.eyes === "1").slice(0, 6);
-
-  const handleClick = (item) => {
-    navigate(`/${item.category}/${item.id}`);
-  };
+  const eyes = allItems
+    .filter((item) => item.eyes === "1" || item.eyes === true)
+    .slice(0, 6);
 
   if (!eyes.length) return null;
 
-  return (
-    <div style={{ padding: "2rem", paddingTop: "0" }}>
-      <Typography variant="overline" fontSize={18}>
-        Eyes Are Looking At
-      </Typography>
+  const go = (item) => navigate(`/${item.category}/${item.id}`);
 
+  return (
+    <>
       <Grid
         container
-        spacing={{ xs: 2, md: 3 }}
-        columns={{ xs: 4, sm: 8, md: 15 }}
+        spacing={3}
+        sx={{ justifyContent: { xs: "center", md: "flex-start" } }}
       >
         {eyes.map((item) => (
-          <Grid item size={{ xs: 4, sm: 4, md: 3 }} key={item.id}>
+          <Grid item xs={12} sm={6} md={4} key={item.id}>
             <Card
               sx={{
                 cursor: "pointer",
-                "&:hover": { boxShadow: 6 },
+                borderRadius: 3,
+                overflow: "hidden",
+                "&:hover": { boxShadow: 6, transform: "translateY(-2px)" },
+                transition: "all .2s",
               }}
-              onClick={() => handleClick(item)}
+              onClick={() => go(item)}
             >
-              <CardActionArea sx={{ maxHeight: 200 }}>
+              <CardActionArea>
                 <CardMedia
                   component="img"
-                  height="160"
+                  height="180"
                   image={item.image || "/fallback.jpg"}
                   alt={item.name || "Item"}
                 />
                 <CardContent>
-                  <Typography variant="subtitle">{item.name}</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>
+                    {item.name || item.title}
+                  </Typography>
                 </CardContent>
               </CardActionArea>
             </Card>
           </Grid>
         ))}
       </Grid>
-    </div>
+    </>
   );
 }

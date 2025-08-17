@@ -1,12 +1,11 @@
 import React from "react";
 import {
-  Box,
-  Typography,
   Grid,
   Card,
   CardActionArea,
   CardMedia,
   CardContent,
+  Typography,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import useAllItems from "../hooks/useAllItems";
@@ -17,53 +16,54 @@ export default function FeaturedTopics() {
 
   if (loading) return null;
 
-  // Filter top 9 by searchcount
+  // Top by views (fallback to featured)
   const topics = allItems
-    .filter((item) => typeof item.views === "number")
-    .sort((a, b) => b.views - a.views)
-    .slice(0, 5);
+    .filter(
+      (i) =>
+        typeof i.views === "number" || i.featured === "1" || i.featured === true
+    )
+    .sort((a, b) => (b.views || 0) - (a.views || 0))
+    .slice(0, 6);
 
-  const handleClick = (item) => {
-    navigate(`/${item.category}/${item.id}`);
-  };
+  const go = (item) => navigate(`/${item.category}/${item.id}`);
 
   return (
-    <div style={{ padding: "2rem", paddingTop: "0" }}>
-      <Typography variant="overline" fontSize={18}>
-        Featured Topics
-      </Typography>
-      <Grid
-        container
-        spacing={{ xs: 2, md: 3 }}
-        columns={{ xs: 4, sm: 8, md: 15 }}
-      >
-        {topics.map((item) => (
-          <Grid item size={{ xs: 4, sm: 4, md: 3 }} key={item.id}>
-            <Card
-              sx={{
-                cursor: "pointer",
-                "&:hover": { boxShadow: 6 },
-              }}
-              onClick={() => handleClick(item)}
-            >
-              <CardActionArea sx={{ maxHeight: 200 }}>
-                <CardMedia
-                  component="img"
-                  height="160"
-                  image={item.image || "/fallback.jpg"}
-                  alt={item.name || "Featured Topic"}
-                />
-                <CardContent>
-                  <Typography variant="subtitle">{item.name}</Typography>
-                  {/* <Typography variant="caption" color="text.secondary">
-                    {item.searchcount} searches
-                  </Typography> */}
-                </CardContent>
-              </CardActionArea>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    </div>
+    <Grid
+      container
+      spacing={3}
+      sx={{ justifyContent: { xs: "center", md: "flex-start" } }}
+    >
+      {topics.map((item) => (
+        <Grid key={item.id} item xs={12} sm={6} md={4}>
+          <Card
+            sx={{
+              bgcolor: "#2A1600",
+              borderRadius: 3,
+              overflow: "hidden",
+              border: "1px solid #3c2102",
+              "&:hover": { boxShadow: 6, transform: "translateY(-2px)" },
+              transition: "all .2s",
+            }}
+          >
+            <CardActionArea onClick={() => go(item)}>
+              <CardMedia
+                component="img"
+                height="160"
+                image={item.image || "/fallback.jpg"}
+                alt={item.name || "Featured"}
+              />
+              <CardContent sx={{ color: "white" }}>
+                <Typography sx={{ fontWeight: 700 }}>{item.name}</Typography>
+                {typeof item.views === "number" && (
+                  <Typography variant="caption" sx={{ color: "#ffcc9c" }}>
+                    {item.views} views
+                  </Typography>
+                )}
+              </CardContent>
+            </CardActionArea>
+          </Card>
+        </Grid>
+      ))}
+    </Grid>
   );
 }
