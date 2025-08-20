@@ -146,6 +146,7 @@ export default function QuickCategories({ floating = false }) {
               textAlign: "center",
               cursor: "pointer",
               scrollSnapAlign: "start",
+              alignContent: "center",
               "&:hover": { transform: "translateY(-3px)", boxShadow: 3 },
             }}
           >
