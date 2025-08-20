@@ -234,7 +234,7 @@ export default function DetailPage() {
                 startIcon={<ArrowBackIcon />}
                 color="secondary"
                 onClick={() => navigate(-1)}
-                sx={{ mb: 2 }}
+                sx={{ mb: 2, display: { xs: "none", sm: "flex" } }}
               >
                 Back
               </Button>

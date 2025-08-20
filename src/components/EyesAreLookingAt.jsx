@@ -40,6 +40,9 @@ export default function EyesAreLookingAt() {
                 overflow: "hidden",
                 "&:hover": { boxShadow: 6, transform: "translateY(-2px)" },
                 transition: "all .2s",
+
+                width: "200px",
+                height: "250px",
               }}
               onClick={() => go(item)}
             >

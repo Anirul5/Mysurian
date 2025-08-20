@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import {
   Grid,
   Typography,
@@ -10,12 +10,37 @@ import {
   CircularProgress,
   Container,
   Button,
+  Skeleton,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import { categoryColors } from "../utils/categoryColors";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { styled } from "@mui/material/styles";
+
+// Styled components for consistent theming
+const StyledCard = styled(Card)(({ theme }) => ({
+  borderRadius: theme.shape.borderRadius * 2,
+  overflow: "hidden",
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  transition: "transform 0.3s ease, box-shadow 0.3s ease",
+  "&:hover": {
+    transform: "translateY(-8px)",
+    boxShadow: theme.shadows[8],
+  },
+  [theme.breakpoints.down("sm")]: {
+    transform: "none", // Prevent hover effect on mobile
+  },
+}));
+
+const StyledButton = styled(Button)(({ theme }) => ({
+  borderRadius: theme.shape.borderRadius,
+  textTransform: "none",
+  fontWeight: 500,
+  padding: theme.spacing(1, 2),
+}));
 
 const formatCategoryName = (name) => {
   return name
@@ -55,87 +80,176 @@ const CategoriesListPage = () => {
 
   if (loading) {
     return (
-      <Box p={4} textAlign="center">
-        <CircularProgress />
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <CircularProgress color="primary" />
       </Box>
     );
   }
 
   return (
-    <Container sx={{ py: 5 }}>
-      <Box sx={{ display: "flex", width: "80%", justifySelf: "center" }}>
-        <Button
+    <Container
+      sx={{
+        py: { xs: 2, sm: 0 },
+        px: { xs: 1, sm: 2 },
+      }}
+    >
+      {/* Header + Back button */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          mb: { xs: 2, sm: 4 },
+          flexWrap: "wrap",
+        }}
+      >
+        <StyledButton
           startIcon={<ArrowBackIcon />}
           color="secondary"
-          onClick={() => navigate(`/`)}
-          sx={{ mb: 2 }}
+          onClick={() => navigate(-1)}
+          sx={{
+            display: { xs: "none", sm: "none", md: "flex" },
+            mb: { xs: 1, sm: 0 },
+            mr: 2,
+          }}
+          aria-label="Go back"
         >
-          Back
-        </Button>
-        <Typography variant="h4" align="center" gutterBottom width={"100%"}>
+          <Typography sx={{ fontWeight: "700" }}>Back</Typography>
+        </StyledButton>
+        <Typography
+          variant="h4"
+          align="center"
+          sx={{
+            flexGrow: 1,
+            fontSize: { xs: "1.5rem", sm: "2rem" },
+            fontWeight: "medium",
+          }}
+        >
           Browse Categories
         </Typography>
       </Box>
 
-      <Grid container spacing={4} justifyContent="center">
+      {/* Categories Grid */}
+      <Grid
+        container
+        spacing={{ xs: 2, sm: 2 }}
+        sm={8}
+        md={12}
+        lg={12}
+        sx={{
+          justifyContent: "center",
+        }}
+      >
         {categories.map((category) => {
           const {
             id,
             description = "Explore top listings under this category.",
-            imageUrl = placeholderImage,
+            imageForCategory,
           } = category;
 
-          const color = categoryColors[id] || categoryColors.default;
           const displayName = id ? formatCategoryName(id) : "Unnamed Category";
 
           return (
-            <Grid item key={id || Math.random()}>
-              <Card
-                elevation={4}
+            <Grid
+              item
+              sm={4}
+              md={2}
+              lg={1}
+              key={id}
+              sx={{
+                display: "flex",
+                width: { xs: "80%", sm: 220 },
+              }}
+            >
+              <StyledCard
+                elevation={0}
                 sx={{
-                  minWidth: { xs: 240, sm: 280 },
-                  maxWidth: 320,
-                  minHeight: 200,
-                  height: { xs: 280, sm: 300, md: 340 },
-                  borderTop: `6px solid`,
-                  borderColor: `${color}.main`,
-                  borderRadius: 3,
-                  transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                  "&:hover": {
-                    transform: "translateY(-5px)",
-                    boxShadow: 6,
-                  },
-                  display: "flex",
-                  flexDirection: "column",
+                  width: "100%",
+                  backgroundColor: "#ffeede",
                 }}
               >
                 <CardActionArea
                   onClick={() => navigate(`/category/${id}`)}
-                  sx={{ height: "100%" }}
+                  aria-label={`View ${displayName} category`}
                 >
-                  <CardMedia
-                    component="img"
-                    height="140"
-                    image={category.imageForCategory || placeholderImage}
-                    alt={displayName}
-                    onError={(e) => {
-                      e.target.src = placeholderImage;
+                  {/* Image with lazy loading */}
+                  <Suspense
+                    fallback={
+                      <Skeleton
+                        variant="rectangular"
+                        width="100%"
+                        height={200}
+                        animation="wave"
+                      />
+                    }
+                  >
+                    <CardMedia
+                      component="img"
+                      sx={{
+                        height: { xs: 150, sm: 160 },
+                        objectFit: "cover",
+                        backgroundColor: "grey.100",
+                      }}
+                      image={imageForCategory || placeholderImage}
+                      alt={displayName}
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.src = placeholderImage;
+                      }}
+                    />
+                  </Suspense>
+
+                  {/* Content */}
+                  <CardContent
+                    sx={{
+                      flexGrow: 1,
+                      textAlign: "center",
+                      p: { xs: 1.5, sm: 2 },
                     }}
-                  />
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" gutterBottom textAlign="center">
+                  >
+                    <Typography
+                      title={displayName}
+                      gutterBottom
+                      sx={{
+                        fontSize: {
+                          xs: "0.9rem",
+                          sm: "1rem",
+                          md: "1.1rem",
+                          lg: "1.2rem",
+                        },
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
                       {displayName}
                     </Typography>
                     <Typography
-                      variant="body2"
                       color="text.secondary"
-                      textAlign="center"
+                      sx={{
+                        fontSize: {
+                          xs: "0.75rem",
+                          sm: "0.85rem",
+                          md: "0.9rem",
+                        },
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
                     >
                       {description}
                     </Typography>
                   </CardContent>
                 </CardActionArea>
-              </Card>
+              </StyledCard>
             </Grid>
           );
         })}

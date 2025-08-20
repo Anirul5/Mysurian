@@ -1,31 +1,57 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import {
   Box,
   Grid,
   Typography,
   TextField,
-  Card,
+  CardActionArea,
   CardContent,
   CardMedia,
   Chip,
-  Rating,
   InputAdornment,
   Container,
   Button,
+  Skeleton,
+  Rating,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { collection, getDocs, getDoc, doc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { categoryColors } from "../utils/categoryColors";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useNavigate } from "react-router-dom";
+import { styled } from "@mui/material/styles";
 
 const fallbackImage = "/fallback.jpg"; // Replace with your fallback path
 
+// Styled components (copied from CategoriesListPage)
+const StyledCard = styled("div")(({ theme }) => ({
+  borderRadius: theme.shape.borderRadius * 2,
+  overflow: "hidden",
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  backgroundColor: "#ffeede",
+  transition: "transform 0.3s ease, box-shadow 0.3s ease",
+  "&:hover": {
+    transform: "translateY(-6px)",
+    boxShadow: theme.shadows[6],
+  },
+  [theme.breakpoints.down("sm")]: {
+    transform: "none", // disable hover shift on mobile
+  },
+}));
+
+const StyledButton = styled(Button)(({ theme }) => ({
+  borderRadius: theme.shape.borderRadius,
+  textTransform: "none",
+  fontWeight: 500,
+  padding: theme.spacing(1, 2),
+}));
+
 const CategoryPage = () => {
   const navigate = useNavigate();
-  const { categoryName, categoryId, category } = useParams();
+  const { categoryName, categoryId } = useParams();
   const [allListings, setAllListings] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryImage, setCategoryImage] = useState("");
@@ -33,7 +59,6 @@ const CategoryPage = () => {
   useEffect(() => {
     const fetchListings = async () => {
       try {
-        // Get category image
         const categoryDoc = await getDoc(
           doc(db, "categories", categoryId || categoryName)
         );
@@ -41,7 +66,6 @@ const CategoryPage = () => {
           setCategoryImage(categoryDoc.data().imageForCategory || "");
         }
 
-        // Get listings
         const querySnapshot = await getDocs(collection(db, categoryName));
         const listings = querySnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -65,58 +89,55 @@ const CategoryPage = () => {
   const categoryColor = categoryColors[categoryName] || categoryColors.default;
 
   const getListingImage = (listing) => {
-    if (
-      typeof listing.imageUrl === "string" &&
-      listing.imageUrl.trim() !== ""
-    ) {
+    if (typeof listing.imageUrl === "string" && listing.imageUrl.trim() !== "")
       return listing.imageUrl;
-    }
-    if (Array.isArray(listing.gallery) && listing.gallery.length > 0) {
+    if (Array.isArray(listing.gallery) && listing.gallery.length > 0)
       return listing.gallery[0];
-    }
-    if (categoryImage) {
-      return categoryImage;
-    }
+    if (categoryImage) return categoryImage;
     return fallbackImage;
   };
 
   return (
-    <Container maxWidth="lg">
+    <Container sx={{ py: { xs: 2, sm: 2 }, px: { xs: 1, sm: 2 } }}>
+      {/* Header */}
       <Box
-        mt={4}
-        mb={3}
-        justifyContent={"center"}
-        textAlign="center"
-        sx={{ width: "80%", justifySelf: "center" }}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          mb: { xs: 2, sm: 2 },
+          flexWrap: "wrap",
+        }}
       >
-        <Box
-          mb={2}
+        <StyledButton
+          startIcon={<ArrowBackIcon />}
+          color="secondary"
+          onClick={() => navigate(-1)}
           sx={{
-            display: "flex",
-            width: "100%",
-            justifySelf: "center",
-            alignItems: "center",
+            display: { xs: "none", md: "flex" },
+            mr: 2,
           }}
         >
-          <Button
-            startIcon={<ArrowBackIcon />}
-            color="secondary"
-            onClick={() => navigate(-1)}
-          >
-            Back
-          </Button>
-          <Typography
-            variant="h4"
-            textTransform="capitalize"
-            style={{ fontSize: "clamp(1rem, 2vw, 2.5rem)", width: "100%" }}
-          >
-            {categoryName
-              .replaceAll("_", " ")
-              .split(" ")
-              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(" ")}
-          </Typography>
-        </Box>
+          <Typography sx={{ fontWeight: "700" }}>Back</Typography>
+        </StyledButton>
+        <Typography
+          variant="h4"
+          align="center"
+          sx={{
+            flexGrow: 1,
+            fontSize: { xs: "1.5rem", sm: "2rem" },
+            fontWeight: "medium",
+          }}
+        >
+          {categoryName
+            .replaceAll("_", " ")
+            .split(" ")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ")}
+        </Typography>
+      </Box>
+
+      {/* Search */}
+      <Box mb={3}>
         <TextField
           fullWidth
           variant="outlined"
@@ -134,96 +155,122 @@ const CategoryPage = () => {
         />
       </Box>
 
-      <Grid container spacing={3} justifyContent={"center"}>
+      {/* Listings Grid */}
+      <Grid container spacing={2} justifyContent="center">
         {filteredListings.length === 0 ? (
           <Grid item xs={12}>
             <Chip label={"No listings found"} color={"warning"} size="large" />
           </Grid>
         ) : (
           filteredListings.map((listing) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={listing.id}>
+            <Grid
+              item
+              xs={6}
+              sm={4}
+              md={3}
+              lg={2}
+              key={listing.id}
+              sx={{ display: "flex", width: { xs: "80%", sm: 220 } }}
+            >
               <Link
                 to={`/${categoryName}/${listing.id}`}
-                style={{ textDecoration: "none" }}
+                style={{ textDecoration: "none", width: "100%" }}
               >
-                <Card
-                  sx={{
-                    minWidth: { xs: 240, sm: 280 },
-                    maxWidth: 320,
-                    minHeight: 350,
-                    height: { xs: 280, sm: 300, md: 340 },
-                    display: "flex",
-                    flexDirection: "column",
-                    borderTop: `6px solid`,
-                    borderColor: `${categoryColor}.main`,
-                    transition: "transform 0.2s",
-                    "&:hover": { transform: "scale(1.02)" },
-                    mx: "auto",
-                  }}
-                >
-                  <CardMedia
-                    component="img"
-                    height="180"
-                    image={getListingImage(listing)}
-                    alt={listing.name || "Listing image"}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = categoryImage || fallbackImage;
-                    }}
-                  />
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Box
-                      display="flex"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      mb={1}
+                <StyledCard>
+                  <CardActionArea>
+                    <Suspense
+                      fallback={
+                        <Skeleton
+                          variant="rectangular"
+                          width="100%"
+                          height={160}
+                          animation="wave"
+                        />
+                      }
+                    >
+                      <CardMedia
+                        component="img"
+                        sx={{
+                          height: { xs: 120, sm: 140, md: 160 },
+                          objectFit: "cover",
+                          backgroundColor: "grey.100",
+                        }}
+                        image={listing.image || categoryImage}
+                        alt={listing.name || "Listing image"}
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.src = categoryImage || fallbackImage;
+                        }}
+                      />
+                    </Suspense>
+
+                    <CardContent
+                      sx={{
+                        flexGrow: 1,
+                        textAlign: "center",
+                        p: { xs: 1.5, sm: 2 },
+                      }}
                     >
                       <Typography
-                        variant="h6"
-                        component="div"
-                        sx={{ fontWeight: 600 }}
+                        title={listing.name}
+                        gutterBottom
+                        sx={{
+                          fontSize: {
+                            xs: "0.9rem",
+                            sm: "1rem",
+                            md: "1.1rem",
+                            lg: "1.2rem",
+                          },
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          color: "black",
+                        }}
                       >
                         {listing.name}
                       </Typography>
-                      <Chip
-                        label={categoryName
-                          .replaceAll("_", " ")
-                          .split(" ")
-                          .map(
-                            (word) =>
-                              word.charAt(0).toUpperCase() + word.slice(1)
-                          )
-                          .join(" ")}
-                        color={categoryColor}
-                        size="small"
-                      />
-                    </Box>
+                      <Typography
+                        color="text.secondary"
+                        sx={{
+                          fontSize: {
+                            xs: "0.75rem",
+                            sm: "0.85rem",
+                            md: "0.9rem",
+                          },
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {listing.description || "No description provided."}
+                      </Typography>
+                      <Box
+                        display="flex"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        mt={1}
+                      >
+                        {listing.rating && (
+                          <Rating
+                            name="read-only"
+                            value={parseFloat(listing.rating)}
+                            precision={0.5}
+                            size="small"
+                            readOnly
+                          />
+                        )}
 
-                    <Typography variant="body2" mb={1} color="text.secondary">
-                      {listing.description
-                        ? listing.description.slice(0, 100) + "..."
-                        : "No description provided."}
-                    </Typography>
-
-                    <Box display={"flex"} justifyContent={"space-between"}>
-                      {listing.rating && (
-                        <Rating
-                          name="read-only"
-                          value={parseFloat(listing.rating)}
-                          precision={0.5}
-                          size="small"
-                          readOnly
-                        />
-                      )}
-
-                      {listing.date && (
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(listing.date).toLocaleDateString()}
-                        </Typography>
-                      )}
-                    </Box>
-                  </CardContent>
-                </Card>
+                        {listing.date && (
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(listing.date).toLocaleDateString()}
+                          </Typography>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </CardActionArea>
+                </StyledCard>
               </Link>
             </Grid>
           ))

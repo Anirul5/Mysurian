@@ -49,7 +49,12 @@ export default function FeaturedListings() {
             sm={6}
             md={4}
             key={item.id}
-            sx={{ display: "flex", justifyContent: "center" }}
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              width: "200px",
+              height: "250px",
+            }}
           >
             <Card
               sx={{

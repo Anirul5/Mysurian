@@ -40,6 +40,8 @@ export default function FeaturedTopics() {
               bgcolor: "#2A1600",
               borderRadius: 3,
               overflow: "hidden",
+              width: "200px",
+              height: "250px",
               border: "1px solid #3c2102",
               "&:hover": { boxShadow: 6, transform: "translateY(-2px)" },
               transition: "all .2s",
