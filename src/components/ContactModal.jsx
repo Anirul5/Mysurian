@@ -1,58 +1,127 @@
-const functions = require("firebase-functions");
-const express = require("express");
-const cors = require("cors");
-const nodemailer = require("nodemailer");
+import React, { useState } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Alert,
+} from "@mui/material";
 
-const app = express();
+const ContactModal = ({ open, handleClose }) => {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState(null);
 
-// Automatically parse JSON bodies
-app.use(express.json());
-
-// Setup CORS middleware
-app.use(
-  cors({
-    origin: ["http://localhost:3000", "https://mysurian09.web.app"],
-    methods: ["POST", "OPTIONS"],
-  })
-);
-
-// Root healthcheck route for Cloud Run
-app.get("/", (req, res) => {
-  res.send("API is running");
-});
-
-// Contact form endpoint
-app.post("/sendContactEmail", async (req, res) => {
-  try {
-    const { name, email, message } = req.body;
-
-    if (!name || !email || !message) {
-      return res
-        .status(400)
-        .send("Missing required fields: name, email, message");
+  const handleSubmit = async () => {
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      setFeedback({
+        type: "error",
+        text: "Please enter a valid email address.",
+      });
+      return;
     }
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: functions.config().gmail.user,
-        pass: functions.config().gmail.pass,
-      },
-    });
+    if (!name.trim() || !message.trim()) {
+      setFeedback({ type: "error", text: "Name and message cannot be empty." });
+      return;
+    }
 
-    await transporter.sendMail({
-      from: email,
-      to: functions.config().gmail.user,
-      subject: `New Contact Form Submission from ${name}`,
-      text: `You received a new message from ${name} (${email}):\n\n${message}`,
-    });
+    setLoading(true);
+    setFeedback(null);
 
-    return res.status(200).send("Message sent successfully!");
-  } catch (error) {
-    console.error("Error sending email:", error);
-    return res.status(500).send("Failed to send message");
-  }
-});
+    try {
+      const response = await fetch(
+        "https://us-central1-mysurian09.cloudfunctions.net/sendContactEmail",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, message }),
+        }
+      );
 
-// ✅ Export the Express app directly as sendContactEmail
-exports.sendContactEmail = functions.https.onRequest(app);
+      if (response.ok) {
+        setFeedback({ type: "success", text: "Message sent successfully!" });
+        setName("");
+        setEmail("");
+        setMessage("");
+      } else {
+        const errMsg = await response.text();
+        setFeedback({
+          type: "error",
+          text: errMsg || "Failed to send message.",
+        });
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      setFeedback({ type: "error", text: "Network error, please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+      <DialogTitle>Contact Us</DialogTitle>
+      <DialogContent>
+        {feedback && (
+          <Alert
+            severity={feedback.type}
+            sx={{ mb: 2 }}
+            onClose={() => setFeedback(null)}
+          >
+            {feedback.text}
+          </Alert>
+        )}
+
+        <TextField
+          label="Your Name"
+          fullWidth
+          margin="normal"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+
+        <TextField
+          label="Your Email"
+          type="email"
+          fullWidth
+          margin="normal"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+
+        <TextField
+          label="Message"
+          fullWidth
+          margin="normal"
+          multiline
+          rows={4}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          required
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose} color="secondary">
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          color="secondary"
+          variant="contained"
+          disabled={loading}
+        >
+          {loading ? "Sending..." : "Send"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+export default ContactModal;
