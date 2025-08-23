@@ -33,6 +33,7 @@ import { auth } from "../firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 import { setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import FavoriteIcon from "@mui/icons-material/Favorite"; // filled heart
+import NearbyAttractions from "../components/NearbyAttractions";
 
 export default function DetailPage() {
   const navigate = useNavigate();
@@ -306,7 +307,14 @@ export default function DetailPage() {
                 )}
               </Box>
               <Box sx={{ position: "absolute", top: 8, right: 8 }}>
-                <IconButton onClick={handleShare} sx={{ color: "#fff" }}>
+                <IconButton
+                  component="span"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleShare();
+                  }}
+                  sx={{ color: "#fff" }}
+                >
                   <ShareIcon />
                 </IconButton>
                 <IconButton sx={{ color: "#fff" }}>
@@ -493,11 +501,9 @@ export default function DetailPage() {
           {/* Nearby Attractions */}
           <Box mb={4}>
             <Typography variant="h6" gutterBottom>
-              Nearby Attractions
+              {/* Nearby Attractions */}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              We'll soon show nearby attractions around this location.
-            </Typography>
+            <NearbyAttractions currentItem={item} />
           </Box>
         </Container>
       )}

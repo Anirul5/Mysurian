@@ -3,10 +3,6 @@ import { useLocation, Link as RouterLink } from "react-router-dom";
 import {
   collection,
   getDocs,
-  query,
-  orderBy,
-  limit,
-  startAfter,
   increment,
   updateDoc,
   doc,
@@ -22,7 +18,12 @@ import {
   Skeleton,
   Chip,
   Box,
-  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  TextField,
+  Pagination,
 } from "@mui/material";
 
 export default function SearchResults() {
@@ -32,10 +33,16 @@ export default function SearchResults() {
 
   const [categories, setCategories] = useState([]);
   const [results, setResults] = useState([]);
+  const [filteredResults, setFilteredResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [lastDocs, setLastDocs] = useState({});
-  const [hasMore, setHasMore] = useState(false);
+  const [filters, setFilters] = useState({
+    category: "",
+    rating: "",
+    address: "",
+  });
+
+  const itemsPerPage = 30;
 
   const highlightText = (text, keyword) => {
     if (!keyword) return text;
@@ -57,228 +64,242 @@ export default function SearchResults() {
     fetchCategories();
   }, []);
 
-  // Fetch results with server-side pagination
+  // Fetch all results once
   useEffect(() => {
     if (!searchQuery || categories.length === 0) return;
-    fetchResults(1);
-    // eslint-disable-next-line
+    const fetchAllResults = async () => {
+      setLoading(true);
+      let allMatches = [];
+
+      for (let category of categories) {
+        const snapshot = await getDocs(collection(db, category));
+        const matches = snapshot.docs
+          .map((docSnap) => ({ id: docSnap.id, ...docSnap.data(), category }))
+          .filter((item) =>
+            Object.entries(item).some(([key, val]) => {
+              if (typeof val === "string") {
+                return val.toLowerCase().includes(searchQuery);
+              }
+              if (Array.isArray(val)) {
+                return val.some(
+                  (v) =>
+                    typeof v === "string" &&
+                    v.toLowerCase().includes(searchQuery)
+                );
+              }
+              return false;
+            })
+          )
+          .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+        // Increment searchcount
+        matches.forEach(async (match) => {
+          try {
+            await updateDoc(doc(db, category, match.id), {
+              searchcount: increment(1),
+            });
+          } catch (err) {
+            console.error("Error updating searchcount:", err);
+          }
+        });
+
+        allMatches = [...allMatches, ...matches];
+      }
+
+      setResults(allMatches);
+      setFilteredResults(allMatches);
+      setLoading(false);
+      setPage(1);
+    };
+    fetchAllResults();
   }, [searchQuery, categories]);
 
-  const fetchResults = async (pageNumber) => {
-    setLoading(true);
-    let allMatches = [];
-    let lastDocMap = {};
-    let moreData = false;
+  // Apply filters in real-time
+  useEffect(() => {
+    let temp = results
+      .filter((item) =>
+        filters.category ? item.category === filters.category : true
+      )
+      .filter((item) =>
+        filters.rating ? (item.rating || 0) >= Number(filters.rating) : true
+      )
+      .filter((item) =>
+        filters.address
+          ? item.address?.toLowerCase().includes(filters.address.toLowerCase())
+          : true
+      );
+    setFilteredResults(temp);
+    setPage(1);
+  }, [filters, results]);
 
-    for (let category of categories) {
-      let qRef;
-      if (pageNumber === 1) {
-        qRef = query(
-          collection(db, category),
-          orderBy("rating", "desc"),
-          limit(16)
-        );
-      } else {
-        const lastDocSnap = lastDocs[category];
-        if (!lastDocSnap) continue;
-        qRef = query(
-          collection(db, category),
-          orderBy("rating", "desc"),
-          startAfter(lastDocSnap),
-          limit(16)
-        );
-      }
-
-      const snapshot = await getDocs(qRef);
-
-      const matches = snapshot.docs
-        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data(), category }))
-        .filter((item) =>
-          Object.entries(item).some(([key, val]) => {
-            if (typeof val === "string") {
-              return val.toLowerCase().includes(searchQuery);
-            }
-            if (Array.isArray(val)) {
-              return val.some(
-                (v) =>
-                  typeof v === "string" && v.toLowerCase().includes(searchQuery)
-              );
-            }
-            return false;
-          })
-        )
-        .sort((a, b) => (b.rating || 0) - (a.rating || 0));
-
-      // store last visible doc for pagination
-      if (!snapshot.empty) {
-        lastDocMap[category] = snapshot.docs[snapshot.docs.length - 1];
-      }
-
-      if (snapshot.size === 16) {
-        moreData = true;
-      }
-
-      allMatches = [...allMatches, ...matches];
-
-      // 🔄 Increment searchcount for matched items
-      matches.forEach(async (match) => {
-        try {
-          await updateDoc(doc(db, category, match.id), {
-            searchcount: increment(1),
-          });
-        } catch (err) {
-          console.error("Error updating searchcount:", err);
-        }
-      });
-    }
-
-    setResults(allMatches);
-    setLastDocs((prev) => ({ ...prev, ...lastDocMap }));
-    setHasMore(moreData);
-    setPage(pageNumber);
-    setLoading(false);
+  // Pagination handler
+  const handlePageChange = (event, value) => {
+    setPage(value);
   };
 
+  const paginatedResults = filteredResults.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
+  const ratingOptions = [1, 2, 3, 4];
+
   return (
-    <Container sx={{ mt: 4, justifyItems: "center" }}>
+    <Container sx={{ mt: 4 }}>
       <Typography variant="h6" gutterBottom sx={{ mb: 4 }}>
         Search Results for "{searchQuery}"
       </Typography>
 
+      {/* Filters */}
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 3 }}>
+        <FormControl sx={{ minWidth: 150 }}>
+          <InputLabel>Category</InputLabel>
+          <Select
+            value={filters.category}
+            onChange={(e) =>
+              setFilters({ ...filters, category: e.target.value })
+            }
+          >
+            <MenuItem value="">All</MenuItem>
+            {categories.map((cat) => (
+              <MenuItem key={cat} value={cat}>
+                {cat.replaceAll("_", " ")}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl sx={{ minWidth: 120 }}>
+          <InputLabel variant="standard" htmlFor="uncontrolled-native">
+            Min Rating
+          </InputLabel>
+          <Select
+            value={filters.rating}
+            onChange={(e) => setFilters({ ...filters, rating: e.target.value })}
+          >
+            <MenuItem value="">All</MenuItem>
+            {ratingOptions.map((r) => (
+              <MenuItem key={r} value={r}>
+                {r}+
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <TextField
+          label="Address"
+          value={filters.address}
+          onChange={(e) => setFilters({ ...filters, address: e.target.value })}
+          sx={{ minWidth: 200 }}
+        />
+      </Box>
+
       {loading ? (
         <Grid container spacing={2}>
           {Array.from({ length: 6 }).map((_, idx) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={idx} minWidth={240}>
+            <Grid item xs={12} sm={6} md={4} lg={3} key={idx}>
               <Skeleton
                 variant="rectangular"
                 height={200}
                 sx={{ borderRadius: 2 }}
-                minWidth={240}
               />
-              <Skeleton variant="text" height={30} minWidth={240} />
-              <Skeleton variant="text" height={20} minWidth={240} />
+              <Skeleton variant="text" height={30} />
+              <Skeleton variant="text" height={20} />
             </Grid>
           ))}
         </Grid>
-      ) : results.length === 0 ? (
+      ) : paginatedResults.length === 0 ? (
         <Typography>No results found.</Typography>
       ) : (
         <>
           <Grid container spacing={2}>
-            <Container maxWidth="lg" sx={{ py: 4 }}>
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: {
-                    xs: "1fr",
-                    sm: "1fr 1fr",
-                    md: "1fr 1fr 1fr",
-                    lg: "1fr 1fr 1fr 1fr",
-                  },
-                  gap: 2,
-                }}
-              >
-                {results.map((item, index) => (
-                  <Card
-                    key={index}
-                    component={RouterLink}
-                    to={`/${item.category}/${item.id}`}
-                    sx={{
-                      textDecoration: "none",
-                      height: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      borderRadius: 2,
-                      overflow: "hidden",
-                      boxShadow: 3,
-                      "&:hover": {
-                        boxShadow: 6,
-                        transform: "translateY(-4px)",
-                        transition: "0.3s",
-                      },
-                    }}
-                  >
-                    <CardMedia
-                      component="img"
-                      height="200"
-                      image={
-                        item.image ||
-                        "https://via.placeholder.com/300x200?text=No+Image"
-                      }
-                      alt={item.name}
-                    />
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6" gutterBottom noWrap>
-                        {highlightText(item.name, searchQuery)}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {highlightText(
-                          item.description?.slice(0, 80) + "...",
-                          searchQuery
-                        )}
-                      </Typography>
-
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          mt: 2,
-                          flexWrap: "wrap",
-                        }}
-                      >
+            {paginatedResults.map((item, index) => (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+                <Card
+                  component={RouterLink}
+                  to={`/${item.category}/${item.id}`}
+                  sx={{
+                    textDecoration: "none",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    boxShadow: 3,
+                    "&:hover": {
+                      boxShadow: 6,
+                      transform: "translateY(-4px)",
+                      transition: "0.3s",
+                    },
+                  }}
+                >
+                  <CardMedia
+                    component="img"
+                    height="200"
+                    image={
+                      item.image ||
+                      "https://via.placeholder.com/300x200?text=No+Image"
+                    }
+                    alt={item.name}
+                  />
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" gutterBottom noWrap>
+                      {highlightText(item.name, searchQuery)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {highlightText(
+                        item.description?.slice(0, 80) + "...",
+                        searchQuery
+                      )}
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        mt: 2,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <Chip
+                        label={
+                          item.category
+                            ?.replaceAll("_", " ")
+                            .split(" ")
+                            .map(
+                              (word) =>
+                                word.charAt(0).toUpperCase() + word.slice(1)
+                            )
+                            .join(" ") || "Uncategorized"
+                        }
+                        color="secondary"
+                        size="small"
+                        sx={{ mb: 1 }}
+                      />
+                      {item.rating && (
                         <Chip
-                          label={
-                            item.category
-                              ?.replaceAll("_", " ")
-                              .split(" ")
-                              .map(
-                                (word) =>
-                                  word.charAt(0).toUpperCase() + word.slice(1)
-                              )
-                              .join(" ") || "Uncategorized"
-                          }
-                          color="secondary"
+                          label={`Rating: ${item.rating}`}
                           size="small"
                           sx={{ mb: 1 }}
                         />
-                        {/* {item.date && (
-                          <Chip
-                            label={`Uploaded: ${item.date}`}
-                            size="small"
-                            variant="outlined"
-                            sx={{ mb: 1 }}
-                          />
-                        )} */}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                ))}
-              </Box>
-            </Container>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
 
-          {/* Pagination Buttons */}
-          {results.length > 16 ? (
-            <Box
-              sx={{ display: "flex", justifyContent: "center", mt: 3, gap: 2 }}
-            >
-              <Button
-                variant="outlined"
-                disabled={page === 1}
-                onClick={() => fetchResults(page - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={!hasMore}
-                onClick={() => fetchResults(page + 1)}
-              >
-                Next
-              </Button>
+          {/* Pagination */}
+          {filteredResults.length > itemsPerPage && (
+            <Box display="flex" justifyContent="center" mt={4} mb={2}>
+              <Pagination
+                count={Math.ceil(filteredResults.length / itemsPerPage)}
+                page={page}
+                onChange={handlePageChange}
+                color="secondary"
+                shape="rounded"
+              />
             </Box>
-          ) : (
-            <></>
           )}
         </>
       )}
