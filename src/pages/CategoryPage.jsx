@@ -13,6 +13,7 @@ import {
   Button,
   Skeleton,
   Rating,
+  Pagination,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useParams, Link, useNavigate } from "react-router-dom";
@@ -22,7 +23,8 @@ import { categoryColors } from "../utils/categoryColors";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { styled } from "@mui/material/styles";
 
-const fallbackImage = "/fallback.jpg"; // Replace with your fallback path
+const fallbackImage =
+  "https://images.unsplash.com/photo-1618598827591-696673ab0abe?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"; // Replace with your fallback path
 
 // Styled components (copied from CategoriesListPage)
 const StyledCard = styled("div")(({ theme }) => ({
@@ -56,6 +58,10 @@ const CategoryPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryImage, setCategoryImage] = useState("");
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 30;
+
   useEffect(() => {
     const fetchListings = async () => {
       try {
@@ -88,13 +94,15 @@ const CategoryPage = () => {
 
   const categoryColor = categoryColors[categoryName] || categoryColors.default;
 
-  const getListingImage = (listing) => {
-    if (typeof listing.imageUrl === "string" && listing.imageUrl.trim() !== "")
-      return listing.imageUrl;
-    if (Array.isArray(listing.gallery) && listing.gallery.length > 0)
-      return listing.gallery[0];
-    if (categoryImage) return categoryImage;
-    return fallbackImage;
+  // pagination slice
+  const paginatedListings = filteredListings.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -143,7 +151,10 @@ const CategoryPage = () => {
           variant="outlined"
           placeholder="Search listings..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setPage(1); // reset to page 1 on search
+          }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -157,12 +168,12 @@ const CategoryPage = () => {
 
       {/* Listings Grid */}
       <Grid container spacing={2} justifyContent="center">
-        {filteredListings.length === 0 ? (
+        {paginatedListings.length === 0 ? (
           <Grid item xs={12}>
             <Chip label={"No listings found"} color={"warning"} size="large" />
           </Grid>
         ) : (
-          filteredListings.map((listing) => (
+          paginatedListings.map((listing) => (
             <Grid
               item
               xs={6}
@@ -195,7 +206,7 @@ const CategoryPage = () => {
                           objectFit: "cover",
                           backgroundColor: "grey.100",
                         }}
-                        image={listing.image || categoryImage}
+                        image={listing.image || categoryImage || fallbackImage}
                         alt={listing.name || "Listing image"}
                         loading="lazy"
                         onError={(e) => {
@@ -276,6 +287,19 @@ const CategoryPage = () => {
           ))
         )}
       </Grid>
+
+      {/* Pagination */}
+      {filteredListings.length > itemsPerPage && (
+        <Box display="flex" justifyContent="center" mt={4} mb={2}>
+          <Pagination
+            count={Math.ceil(filteredListings.length / itemsPerPage)}
+            page={page}
+            onChange={handlePageChange}
+            color="secondary"
+            shape="rounded"
+          />
+        </Box>
+      )}
     </Container>
   );
 };

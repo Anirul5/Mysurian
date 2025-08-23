@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Container,
@@ -6,18 +6,24 @@ import {
   Typography,
   Link,
   IconButton,
+  Button,
 } from "@mui/material";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import TwitterIcon from "@mui/icons-material/Twitter";
+import ContactMailIcon from "@mui/icons-material/ContactMail";
+import ContactModal from "./ContactModal"; // <-- import your modal
 
 export default function Footer() {
+  const [open, setOpen] = useState(false);
+
   return (
     <Box
       sx={{ width: "100%", backgroundColor: "#2c2c2c", color: "#fff", mt: 10 }}
     >
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Grid container spacing={4}>
+          {/* Brand + About */}
           <Grid item xs={12} sm={4}>
             <Typography variant="h6" sx={{ fontWeight: "bold" }}>
               Mysurian
@@ -28,47 +34,35 @@ export default function Footer() {
             </Typography>
           </Grid>
 
+          {/* Quick Links */}
           <Grid item xs={12} sm={4}>
             <Typography variant="h6" sx={{ fontWeight: "bold" }}>
               Quick Links
             </Typography>
             <Box sx={{ mt: 1 }}>
               <Link
-                href="#"
+                href={`/`}
                 underline="none"
                 sx={{ display: "block", color: "#ccc", mb: 0.5 }}
               >
-                Hotels
+                Home
               </Link>
               <Link
-                href="#"
+                href={`/categories`}
                 underline="none"
                 sx={{ display: "block", color: "#ccc", mb: 0.5 }}
               >
-                Gyms
-              </Link>
-              <Link
-                href="#"
-                underline="none"
-                sx={{ display: "block", color: "#ccc", mb: 0.5 }}
-              >
-                Food
-              </Link>
-              <Link
-                href="#"
-                underline="none"
-                sx={{ display: "block", color: "#ccc" }}
-              >
-                Events
+                Categories
               </Link>
             </Box>
           </Grid>
 
+          {/* Contact + Socials */}
           <Grid item xs={12} sm={4}>
             <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-              Follow Us
+              Connect With Us
             </Typography>
-            <Box sx={{ mt: 1 }}>
+            <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
               <IconButton
                 color="inherit"
                 href="https://facebook.com"
@@ -91,15 +85,30 @@ export default function Footer() {
                 <TwitterIcon />
               </IconButton>
             </Box>
+
+            {/* Contact Us Button */}
+            <Button
+              variant="outlined"
+              color="inherit"
+              startIcon={<ContactMailIcon />}
+              sx={{ mt: 2, borderColor: "#aaa", color: "#ccc" }}
+              onClick={() => setOpen(true)}
+            >
+              Contact Us
+            </Button>
           </Grid>
         </Grid>
       </Container>
 
+      {/* Copyright */}
       <Box sx={{ backgroundColor: "#1e1e1e", py: 2, textAlign: "center" }}>
         <Typography variant="body2" color="#aaa">
           © {new Date().getFullYear()} Mysurian. Made in Mysuru ❤️
         </Typography>
       </Box>
+
+      {/* Contact Modal */}
+      <ContactModal open={open} handleClose={() => setOpen(false)} />
     </Box>
   );
 }
