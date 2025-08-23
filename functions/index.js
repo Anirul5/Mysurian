@@ -1,57 +1,61 @@
 const functions = require("firebase-functions");
-const nodemailer = require("nodemailer");
+const express = require("express");
 const cors = require("cors");
+const nodemailer = require("nodemailer");
+
+const app = express();
+
+// Automatically parse JSON bodies
+app.use(express.json());
 
 // Setup CORS middleware
-const corsHandler = cors({
-  origin: ["http://localhost:3000", "https://mysurian09.web.app"],
-  methods: ["POST", "OPTIONS"], // Explicitly allow POST and OPTIONS
-  allowedHeaders: ["Content-Type"], // Allow necessary headers
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "https://mysurian09.web.app"],
+    methods: ["POST", "OPTIONS"],
+  })
+);
+
+// Root healthcheck route for Cloud Run
+app.get("/", (req, res) => {
+  res.send("API is running");
 });
 
-app.use(corsHandler);
+// Contact form endpoint
+app.post("/sendContactEmail", async (req, res) => {
+  try {
+    const { name, email, message } = req.body;
 
-// Configure the transporter
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: functions.config().gmail.user,
-    pass: functions.config().gmail.pass,
-  },
+    // Validate required fields
+    if (!name || !email || !message) {
+      return res
+        .status(400)
+        .send("Missing required fields: name, email, message");
+    }
+
+    // Configure transporter inside request to prevent startup failures
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: functions.config().gmail.user,
+        pass: functions.config().gmail.pass,
+      },
+    });
+
+    // Send email
+    await transporter.sendMail({
+      from: email,
+      to: functions.config().gmail.user,
+      subject: `New Contact Form Submission from ${name}`,
+      text: `You received a new message from ${name} (${email}):\n\n${message}`,
+    });
+
+    return res.status(200).send("Message sent successfully!");
+  } catch (error) {
+    console.error("Error sending email:", error);
+    return res.status(500).send("Failed to send message");
+  }
 });
 
-exports.sendContactEmail = functions.https.onRequest((req, res) => {
-  corsHandler(req, res, async () => {
-    if (req.method === "OPTIONS") {
-      return res.status(204).send(""); // Preflight OK
-    }
-
-    if (req.method !== "POST") {
-      return res.status(405).send("Method not allowed");
-    }
-
-    try {
-      const { name, email, message } = req.body;
-
-      if (!name || !email || !message) {
-        return res
-          .status(400)
-          .send("Missing required fields: name, email, message");
-      }
-
-      const mailOptions = {
-        from: email,
-        to: functions.config().gmail.user,
-        subject: `New Contact Form Submission from ${name}`,
-        text: `You received a new message from ${name} (${email}):\n\n${message}`,
-      };
-
-      await transporter.sendMail(mailOptions);
-
-      return res.status(200).send("Message sent successfully!");
-    } catch (error) {
-      console.error("Error sending email:", error);
-      return res.status(500).send("Failed to send message");
-    }
-  });
-});
+// Export Express app as Firebase Function
+exports.api = functions.https.onRequest(app);
