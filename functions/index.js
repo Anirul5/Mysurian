@@ -1,57 +1,50 @@
+const { onRequest } = require("firebase-functions/v2/https");
 const functions = require("firebase-functions");
-const express = require("express");
-const cors = require("cors");
+const { defineSecret } = require("firebase-functions/params");
 const nodemailer = require("nodemailer");
+const cors = require("cors")({ origin: true }); // reflects request origin
 
-const app = express();
+// 🔐 Secrets from Google Secret Manager (never in code/repo)
+const gmailUser = defineSecret("GMAIL_USER");
+const gmailPass = defineSecret("GMAIL_PASS");
 
-// Enable CORS before other middleware
-app.use(
-  cors({
-    origin: ["http://localhost:3000", "https://mycurian09.web.app"], // Exact origins
-    methods: ["POST", "OPTIONS"], // Ensure OPTIONS is included
-    allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
-    optionsSuccessStatus: 200, // Some browsers require this for preflight
-  })
-);
+exports.sendContactEmail = onRequest(
+  { secrets: [gmailUser, gmailPass] },
+  (req, res) => {
+    cors(req, res, async () => {
+      if (req.method === "OPTIONS") return res.status(204).send("");
+      if (req.method !== "POST")
+        return res.status(405).send("Method Not Allowed");
 
-app.use(express.json());
+      const { name, email, message } = req.body || {};
+      if (!name || !email || !message) {
+        return res
+          .status(400)
+          .send("Missing required fields: name, email, message");
+      }
 
-app.get("/", (req, res) => {
-  res.send("API is running");
-});
+      try {
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: gmailUser.value(),
+            pass: gmailPass.value(),
+          },
+        });
 
-app.post("/sendContactEmail", async (req, res) => {
-  try {
-    const { name, email, message } = req.body;
+        await transporter.sendMail({
+          from: `"Mysurian Contact" <${gmailUser.value()}>`,
+          replyTo: email,
+          to: gmailUser.value(),
+          subject: `New Contact Form Submission from ${name}`,
+          text: `From: ${name} (${email})\n\n${message}`,
+        });
 
-    if (!name || !email || !message) {
-      return res
-        .status(400)
-        .send("Missing required fields: name, email, message");
-    }
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: functions.config().gmail.user,
-        pass: functions.config().gmail.pass,
-      },
+        return res.status(200).send("Message sent successfully!");
+      } catch (error) {
+        console.error("Error sending email:", error);
+        return res.status(500).send(`Failed to send message: ${error.message}`);
+      }
     });
-
-    await transporter.verify();
-    await transporter.sendMail({
-      from: email,
-      to: functions.config().gmail.user,
-      subject: `New Contact Form Submission from ${name}`,
-      text: `You received a new message from ${name} (${email}):\n\n${message}`,
-    });
-
-    return res.status(200).send("Message sent successfully!");
-  } catch (error) {
-    console.error("Error sending email:", error);
-    return res.status(500).send("Failed to send message");
   }
-});
-
-exports.sendContactEmail = functions.https.onRequest(app);
+);
