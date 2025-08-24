@@ -34,6 +34,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import FavoriteIcon from "@mui/icons-material/Favorite"; // filled heart
 import NearbyAttractions from "../components/NearbyAttractions";
+import Reviews from "../components/Reviews";
 
 export default function DetailPage() {
   const navigate = useNavigate();
@@ -489,13 +490,12 @@ export default function DetailPage() {
           )}
 
           {/* User Reviews */}
+          {/* User Reviews */}
           <Box mb={4}>
             <Typography variant="h6" gutterBottom>
               User Reviews
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Reviews coming soon...
-            </Typography>
+            <Reviews categoryId={category} itemId={id} currentUser={user} />
           </Box>
 
           {/* Nearby Attractions */}
