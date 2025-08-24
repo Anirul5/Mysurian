@@ -7,6 +7,9 @@ import {
   TextField,
   Button,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from "@mui/material";
 import { Edit, Delete } from "@mui/icons-material";
 import {
@@ -27,8 +30,9 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
   const [newComment, setNewComment] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editingComment, setEditingComment] = useState("");
+  const [openDialog, setOpenDialog] = useState(false);
+  const [dialogComment, setDialogComment] = useState("");
 
-  // Real-time listener for reviews
   useEffect(() => {
     if (!categoryId || !itemId) return;
 
@@ -43,7 +47,6 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
         ...doc.data(),
       }));
 
-      // ✅ put current user's comment first
       if (currentUser) {
         const userReview = fetched.find((r) => r.uid === currentUser.uid);
         const others = fetched.filter((r) => r.uid !== currentUser.uid);
@@ -56,13 +59,11 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
     return () => unsubscribe();
   }, [categoryId, itemId, currentUser]);
 
-  // Add or update review
   const handleAddReview = async () => {
     let user = currentUser;
-
     if (!user) {
       try {
-        user = await loginWithGoogle(); // 👈 trigger login popup
+        user = await loginWithGoogle();
       } catch (err) {
         console.error("Login required", err);
         return;
@@ -71,11 +72,9 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
 
     if (!newComment.trim()) return;
 
-    // ✅ check if user already has a review
     const existing = reviews.find((r) => r.uid === user.uid);
 
     if (existing) {
-      // update instead of add
       const reviewRef = doc(
         db,
         "categories",
@@ -90,7 +89,6 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
         date: new Date(),
       });
     } else {
-      // add new comment
       await addDoc(
         collection(db, "categories", categoryId, "items", itemId, "reviews"),
         {
@@ -105,13 +103,11 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
     setNewComment("");
   };
 
-  // Start editing
   const handleEdit = (review) => {
     setEditingId(review.id);
     setEditingComment(review.comment);
   };
 
-  // Save edited review
   const handleSaveEdit = async () => {
     const reviewRef = doc(
       db,
@@ -126,11 +122,9 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
       comment: editingComment,
       date: new Date(),
     });
-
     setEditingId(null);
   };
 
-  // Delete review
   const handleDelete = async (id) => {
     const reviewRef = doc(
       db,
@@ -144,13 +138,17 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
     await deleteDoc(reviewRef);
   };
 
+  const openFullComment = (comment) => {
+    setDialogComment(comment);
+    setOpenDialog(true);
+  };
+
   return (
     <Box sx={{ mt: 4 }}>
       <Typography variant="h6" gutterBottom>
         User Comments ({reviews.length})
       </Typography>
 
-      {/* Horizontal scroll list */}
       <Box
         style={{ display: "flex", overflowX: "auto", gap: 2, paddingBottom: 2 }}
       >
@@ -204,7 +202,19 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
                 <>
                   <Typography
                     variant="body2"
-                    style={{ fontSize: "0.9rem", marginTop: 8 }}
+                    style={{
+                      fontSize: "0.9rem",
+                      marginTop: 8,
+                      maxWidth: 220,
+                      maxHeight: 48,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => openFullComment(r.comment)}
                   >
                     {r.comment}
                   </Typography>
@@ -268,15 +278,9 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "12px",
                   backgroundColor: "#fafafa",
-                  "& fieldset": {
-                    borderColor: "#ddd",
-                  },
-                  "&:hover fieldset": {
-                    borderColor: "#bbb",
-                  },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "transparent",
-                  },
+                  "& fieldset": { borderColor: "#ddd" },
+                  "&:hover fieldset": { borderColor: "#bbb" },
+                  "&.Mui-focused fieldset": { borderColor: "transparent" },
                   "&.Mui-focused": {
                     backgroundColor: "#fff",
                     boxShadow: "0 0 6px rgba(0,0,0,0.15)",
@@ -306,6 +310,14 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
           </Button>
         )}
       </Box>
+
+      {/* Full comment dialog */}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>Full Comment</DialogTitle>
+        <DialogContent>
+          <Typography>{dialogComment}</Typography>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

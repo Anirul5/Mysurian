@@ -489,12 +489,8 @@ export default function DetailPage() {
             </Typography>
           )}
 
-          {/* User Reviews */}
-          {/* User Reviews */}
+          {/* User Comment */}
           <Box mb={4}>
-            <Typography variant="h6" gutterBottom>
-              User Reviews
-            </Typography>
             <Reviews categoryId={category} itemId={id} currentUser={user} />
           </Box>
 
