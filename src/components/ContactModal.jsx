@@ -48,6 +48,12 @@ const ContactModal = ({ open, handleClose }) => {
         setName("");
         setEmail("");
         setMessage("");
+      } else if (response.status === 0 || response.type === "opaque") {
+        // Handle CORS or network-related failures
+        setFeedback({
+          type: "error",
+          text: "Unable to connect to the server. Please check your network or contact support.",
+        });
       } else {
         const errMsg = await response.text();
         setFeedback({
@@ -57,7 +63,10 @@ const ContactModal = ({ open, handleClose }) => {
       }
     } catch (error) {
       console.error("Error:", error);
-      setFeedback({ type: "error", text: "Network error, please try again." });
+      setFeedback({
+        type: "error",
+        text: "Network error, please try again or check server configuration.",
+      });
     } finally {
       setLoading(false);
     }

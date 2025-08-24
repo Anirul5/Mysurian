@@ -5,35 +5,32 @@ const nodemailer = require("nodemailer");
 
 const app = express();
 
-// Automatically parse JSON bodies
-app.use(express.json());
-
-// Setup CORS middleware
+// Enable CORS before other middleware
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://mysurian09.web.app"],
-    methods: ["POST", "OPTIONS"],
+    origin: ["http://localhost:3000", "https://mycurian09.web.app"], // Exact origins
+    methods: ["POST", "OPTIONS"], // Ensure OPTIONS is included
+    allowedHeaders: ["Content-Type", "Authorization"], // Allow necessary headers
+    optionsSuccessStatus: 200, // Some browsers require this for preflight
   })
 );
 
-// Root healthcheck route for Cloud Run
+app.use(express.json());
+
 app.get("/", (req, res) => {
   res.send("API is running");
 });
 
-// Contact form endpoint
 app.post("/sendContactEmail", async (req, res) => {
   try {
     const { name, email, message } = req.body;
 
-    // Validate required fields
     if (!name || !email || !message) {
       return res
         .status(400)
         .send("Missing required fields: name, email, message");
     }
 
-    // Configure transporter inside request to prevent startup failures
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -42,7 +39,7 @@ app.post("/sendContactEmail", async (req, res) => {
       },
     });
 
-    // Send email
+    await transporter.verify();
     await transporter.sendMail({
       from: email,
       to: functions.config().gmail.user,
@@ -57,5 +54,4 @@ app.post("/sendContactEmail", async (req, res) => {
   }
 });
 
-// Export Express app as Firebase Function
-exports.api = functions.https.onRequest(app);
+exports.sendContactEmail = functions.https.onRequest(app);
