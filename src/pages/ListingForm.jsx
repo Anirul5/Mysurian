@@ -4,123 +4,135 @@ import {
   Button,
   TextField,
   Typography,
-  Grid,
   MenuItem,
-  IconButton,
-  Switch,
-  FormControlLabel,
+  Paper,
+  Grid,
+  Divider,
 } from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../firebaseConfig";
 import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
-import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { itemFieldTypes, typedOfFields } from "../utils/itemFieldTypes";
-import Divider from "@mui/material/Divider";
 
+// EXACT categories from your PDF
+const CATEGORY_OPTIONS = [
+  "Gyms & Fitness",
+  "Hotels & Stays",
+  "Restaurants & Cafes",
+  "Tourist Attractions",
+  "Festivals & Events",
+  "Shopping & Markets",
+  "Education",
+  "Healthcare",
+  "Transportation",
+  "Street Foods (Food Streets)",
+  "Movie Theaters",
+  "Parks",
+  "Playgrounds",
+  "Entertainment (Bowling, Snooker, Etc)",
+  "Libraries",
+  "Co-working Spaces",
+  "Religious Places",
+  "Cultural Centers / Museums",
+  "Salons & Beauty Services",
+  "Laundry & Dry Cleaning",
+  "Repair Services (Electronics, Appliances)",
+  "Plumbing & Electrical Services",
+  "Pet Services (Vets, Grooming)",
+  "Automobile Services (Garages, Car Washes)",
+  "Tech & Electronics Stores",
+  "Emergency Contacts (Police, Ambulance, Fire)",
+  "Wellness & Spas",
+  "Sports Clubs / Academies",
+];
+
+// Fixed fields exactly like the PDF
 const DEFAULT_FIELDS = {
-  name: { value: "", type: "String", required: true },
-  description: { value: "", type: "String", required: true },
-  date: {
-    value: new Date().toISOString().split("T")[0],
-    type: "Date",
-    required: false,
-  },
-  address: { value: "", type: "String", required: false },
-  rating: { value: "", type: "Number", required: false },
-  image: { value: "", type: "String", required: false },
-  mapurl: { value: "", type: "String", required: false },
-  gallery: { value: "", type: "String", required: false },
-  views: { value: 0, type: "Number" },
+  name: "",
+  description: "",
+  category: "",
+  address: "", // LONG TEXT
+  rating: "",
+  website: "",
+  contact: "",
+  whatsapp: "",
+  image: "",
+  gallery: "",
+  mapurl: "",
+  featured: "FALSE", // TRUE/FALSE dropdown
+  eyes: "FALSE", // TRUE/FALSE dropdown
 };
+
+const tf = (v) =>
+  v === true || v === "1" || v === 1 || String(v).toUpperCase() === "TRUE"
+    ? "TRUE"
+    : "FALSE";
 
 const ListingForm = () => {
   const { categoryId, listingId } = useParams();
   const navigate = useNavigate();
-  const [fields, setFields] = useState({});
-  const [newField, setNewField] = useState({
-    name: "",
-    value: "",
-    type: "String",
-    required: false,
-  });
+  const [fields, setFields] = useState(DEFAULT_FIELDS);
   const [previewMode, setPreviewMode] = useState(false);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (listingId) {
-      const fetchListing = async () => {
-        const docRef = doc(db, categoryId, listingId);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const loadedFields = {};
-          Object.entries(data).forEach(([key, value]) => {
-            let detectedType = typeof value;
-            if (detectedType === "object" && value instanceof Date)
-              detectedType = "Date";
-            else if (value === "1" || value === "0") detectedType = "Boolean";
-            loadedFields[key] = {
-              value: value,
-              type: itemFieldTypes[key]?.type || detectedType || "String",
-              required: DEFAULT_FIELDS[key]?.required || false,
-            };
-          });
-          setFields(loadedFields);
-        }
-      };
-      fetchListing();
-    } else {
-      setFields(DEFAULT_FIELDS);
-    }
+    if (!listingId) return;
+    (async () => {
+      const ref = doc(db, categoryId, listingId);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        setFields({
+          ...DEFAULT_FIELDS,
+          ...data,
+          featured: tf(data.featured),
+          eyes: tf(data.eyes),
+          rating:
+            data.rating === undefined || data.rating === null
+              ? ""
+              : String(data.rating),
+        });
+      }
+    })();
   }, [listingId, categoryId]);
 
-  const handleFieldChange = (key, value) => {
-    setFields((prev) => ({
-      ...prev,
-      [key]: { ...prev[key], value },
-    }));
+  const handleChange = (key, value) => {
+    setFields((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleNewFieldAdd = () => {
-    const { name, value, type, required } = newField;
-    if (name && type) {
-      setFields((prev) => ({
-        ...prev,
-        [name]: { value, type, required },
-      }));
-      setNewField({ name: "", value: "", type: "String", required: false });
-    }
+  const validate = () => {
+    const e = {};
+    if (!fields.name.trim()) e.name = "Required";
+    if (!fields.description.trim()) e.description = "Required";
+    if (!fields.category) e.category = "Required";
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSubmit = async () => {
-    const data = {};
-    for (const key in fields) {
-      const { value, type } = fields[key];
-      if (type === "Number") {
-        data[key] = parseFloat(value) || 0;
-      } else if (type === "Boolean") {
-        data[key] = value === true || value === "1" || value === 1 ? "1" : "0";
-      } else {
-        data[key] = value;
-      }
-    }
+    if (!validate()) return;
+
+    const payload = {
+      ...fields,
+      // ensure rating is numeric within 0–5 (or saved empty)
+      rating:
+        fields.rating === "" || isNaN(parseFloat(fields.rating))
+          ? ""
+          : Math.max(0, Math.min(5, parseFloat(fields.rating))),
+      // keep booleans exactly as strings "TRUE"/"FALSE"
+      featured: tf(fields.featured),
+      eyes: tf(fields.eyes),
+    };
 
     if (listingId) {
-      await updateDoc(doc(db, categoryId, listingId), data);
+      await updateDoc(doc(db, categoryId, listingId), payload);
     } else {
       await addDoc(collection(db, categoryId), {
-        ...data,
-        date: new Date().toISOString().split("T")[0],
+        ...payload,
+        date: new Date().toISOString().split("T")[0], // you can remove if not needed
       });
     }
-
     navigate(`/admin/${categoryId}/listings`);
-  };
-
-  const removeField = (key) => {
-    const newFields = { ...fields };
-    delete newFields[key];
-    setFields(newFields);
   };
 
   return (
@@ -134,147 +146,218 @@ const ListingForm = () => {
         Back
       </Button>
 
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h4" fontWeight="bold" gutterBottom>
         {listingId ? "Edit Listing" : "Add New Listing"}
       </Typography>
 
-      <Grid container spacing={2}>
-        {Object.entries(fields).map(([key, field]) => (
-          <Grid item xs={12} sm={6} key={key}>
-            {field.type === "Boolean" ? (
-              <FormControlLabel
-                control={
-                  <Switch
-                    color="secondary"
-                    checked={field.value === true || field.value === "1"}
-                    onChange={(e) => handleFieldChange(key, e.target.checked)}
-                  />
-                }
-                label={key}
-              />
-            ) : (
+      <Paper
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 3,
+          borderRadius: 2,
+          mb: 3,
+          maxWidth: 1000,
+          mx: "auto",
+        }}
+      >
+        {!previewMode ? (
+          <Grid container spacing={3}>
+            {/* Name */}
+            <Grid item xs={12} display={"contents"}>
               <TextField
+                label="Name"
                 fullWidth
-                label={key}
-                type={field.type === "Number" ? "number" : "text"}
-                inputProps={
-                  field.type === "Number"
-                    ? { inputMode: "decimal", step: "0.1", min: 0, max: 5 }
-                    : {}
-                }
-                value={field.value}
-                onChange={(e) => handleFieldChange(key, e.target.value)}
-                required={field.required}
-                InputProps={{
-                  endAdornment: (
-                    <IconButton onClick={() => removeField(key)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  ),
-                }}
+                required
+                value={fields.name}
+                error={Boolean(errors.name)}
+                helperText={errors.name}
+                onChange={(e) => handleChange("name", e.target.value)}
               />
-            )}
-          </Grid>
-        ))}
-      </Grid>
+            </Grid>
 
-      <Box mt={4}>
-        <Typography variant="subtitle1" gutterBottom>
-          Add New Field
-        </Typography>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={3}>
-            <TextField
-              label="Field Name"
-              fullWidth
-              value={newField.name}
-              onChange={(e) =>
-                setNewField((prev) => ({ ...prev, name: e.target.value }))
-              }
-            />
-          </Grid>
-          <Grid item xs={12} sm={3}>
-            <TextField
-              label="Value"
-              fullWidth
-              value={newField.value}
-              onChange={(e) =>
-                setNewField((prev) => ({ ...prev, value: e.target.value }))
-              }
-            />
-          </Grid>
-          <Grid item xs={12} sm={3}>
-            <TextField
-              label="Datatype"
-              fullWidth
-              select
-              value={newField.type}
-              onChange={(e) =>
-                setNewField((prev) => ({ ...prev, type: e.target.value }))
-              }
-            >
-              {Object.values(typedOfFields).map((option) => (
-                <MenuItem key={option.type} value={option.type}>
-                  {option.type}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={2}>
-            <Button
-              onClick={handleNewFieldAdd}
-              variant="contained"
-              color="secondary"
-            >
-              Add Field
-            </Button>
-          </Grid>
-        </Grid>
-      </Box>
+            {/* Description */}
+            <Grid item xs={12} display={"contents"}>
+              <TextField
+                label="Description"
+                fullWidth
+                required
+                multiline
+                rows={4}
+                value={fields.description}
+                error={Boolean(errors.description)}
+                helperText={errors.description}
+                onChange={(e) => handleChange("description", e.target.value)}
+              />
+            </Grid>
 
-      <Box mt={4}>
-        {/* <Button variant="contained" color="secondary" onClick={handleSubmit}>
-          {listingId ? "Update Listing" : "Save Listing"}
-        </Button> */}
-        <Grid item xs={12}>
-          <Divider sx={{ my: 2 }} />
-          <Box display="flex" gap={2}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setPreviewMode(!previewMode)}
-            >
-              {previewMode ? "Edit Mode" : "Preview Listing"}
-            </Button>
-            {!previewMode && (
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleSubmit}
+            {/* Category */}
+            <Grid item xs={12} display={"contents"}>
+              <TextField
+                label="Category"
+                select
+                fullWidth
+                required
+                value={fields.category}
+                error={Boolean(errors.category)}
+                helperText={errors.category}
+                onChange={(e) => handleChange("category", e.target.value)}
+                SelectProps={{ displayEmpty: true }}
               >
-                {listingId ? "Update Listing" : "Submit Listing"}
-              </Button>
-            )}
-          </Box>
-        </Grid>
+                <MenuItem value="">{/* <em>Select Category</em> */}</MenuItem>
+                {CATEGORY_OPTIONS.map((opt) => (
+                  <MenuItem key={opt} value={opt}>
+                    {opt}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
 
-        {previewMode && (
-          <Grid item xs={12}>
-            <Box
-              sx={{ p: 2, border: "1px solid #ccc", borderRadius: 2, mt: 2 }}
-            >
-              <Typography variant="h6">Preview</Typography>
-              <pre>
-                {JSON.stringify(
-                  Object.fromEntries(
-                    Object.entries(fields).map(([k, v]) => [k, v.value])
-                  ),
-                  null,
-                  2
-                )}
-              </pre>
-            </Box>
+            {/* Address */}
+            <Grid item xs={12} display={"contents"}>
+              <TextField
+                label="Address"
+                fullWidth
+                multiline
+                rows={3}
+                value={fields.address}
+                onChange={(e) => handleChange("address", e.target.value)}
+              />
+            </Grid>
+
+            {/* Website */}
+            <Grid item xs={12} display={"contents"}>
+              <TextField
+                label="Website"
+                fullWidth
+                value={fields.website}
+                onChange={(e) => handleChange("website", e.target.value)}
+              />
+            </Grid>
+
+            {/* Contact */}
+            <Grid item xs={12} display={"contents"}>
+              <TextField
+                label="Contact"
+                fullWidth
+                value={fields.contact}
+                onChange={(e) => handleChange("contact", e.target.value)}
+              />
+            </Grid>
+
+            {/* WhatsApp */}
+            <Grid item xs={12} display={"contents"}>
+              <TextField
+                label="WhatsApp"
+                fullWidth
+                value={fields.whatsapp}
+                onChange={(e) => handleChange("whatsapp", e.target.value)}
+              />
+            </Grid>
+
+            {/* Image URL */}
+            <Grid item xs={12} display={"contents"}>
+              <TextField
+                label="Image URL"
+                fullWidth
+                value={fields.image}
+                onChange={(e) => handleChange("image", e.target.value)}
+              />
+            </Grid>
+
+            {/* Gallery */}
+            <Grid item xs={12} display={"contents"}>
+              <TextField
+                label="Gallery (comma separated URLs)"
+                fullWidth
+                value={fields.gallery}
+                onChange={(e) => handleChange("gallery", e.target.value)}
+              />
+            </Grid>
+
+            {/* Map URL */}
+            <Grid item xs={12} display={"contents"}>
+              <TextField
+                label="Map URL"
+                fullWidth
+                value={fields.mapurl}
+                onChange={(e) => handleChange("mapurl", e.target.value)}
+              />
+            </Grid>
+
+            {/* Rating */}
+            <Grid item xs={12}>
+              <TextField
+                label="Rating (0–5)"
+                type="number"
+                inputProps={{ min: 0, max: 5, step: 0.1 }}
+                fullWidth
+                value={fields.rating}
+                onChange={(e) => handleChange("rating", e.target.value)}
+              />
+            </Grid>
+
+            {/* Featured */}
+            <Grid item xs={12}>
+              <TextField
+                label="Featured"
+                select
+                fullWidth
+                value={fields.featured}
+                onChange={(e) => handleChange("featured", e.target.value)}
+              >
+                <MenuItem value="TRUE">TRUE</MenuItem>
+                <MenuItem value="FALSE">FALSE</MenuItem>
+              </TextField>
+            </Grid>
+
+            {/* Eyes */}
+            <Grid item xs={12}>
+              <TextField
+                label="Eyes"
+                select
+                fullWidth
+                value={fields.eyes}
+                onChange={(e) => handleChange("eyes", e.target.value)}
+              >
+                <MenuItem value="TRUE">TRUE</MenuItem>
+                <MenuItem value="FALSE">FALSE</MenuItem>
+              </TextField>
+            </Grid>
           </Grid>
+        ) : (
+          <>
+            <Typography variant="h6" gutterBottom>
+              Listing Preview
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Grid container spacing={2}>
+              {Object.entries(fields).map(([k, v]) => (
+                <Grid item xs={12} key={k}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    {k}
+                  </Typography>
+                  <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+                    {v || "-"}
+                  </Typography>
+                </Grid>
+              ))}
+            </Grid>
+          </>
+        )}
+      </Paper>
+
+      <Box display="flex" gap={2} justifyContent="center">
+        <Button
+          variant="outlined"
+          color="secondary"
+          onClick={() => setPreviewMode((p) => !p)}
+        >
+          {previewMode ? "Back to Edit" : "Preview Listing"}
+        </Button>
+        {!previewMode && (
+          <Button variant="contained" color="secondary" onClick={handleSubmit}>
+            {listingId ? "Update Listing" : "Submit Listing"}
+          </Button>
         )}
       </Box>
     </Box>

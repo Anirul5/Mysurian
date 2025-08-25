@@ -16,10 +16,9 @@ export default function EyesAreLookingAt() {
 
   if (loading) return null;
 
-  const eyes = allItems
-    .filter((item) => item.eyes === "1" || item.eyes === true)
-    .slice(0, 6);
-
+  const eyes = allItems.filter(
+    (item) => item.eyes === "1" || item.eyes === "TRUE" || item.eyes === true
+  );
   if (!eyes.length) return null;
 
   const go = (item) => navigate(`/${item.category}/${item.id}`);
@@ -33,6 +32,7 @@ export default function EyesAreLookingAt() {
       >
         {eyes.map((item) => (
           <Grid item xs={12} sm={6} md={4} key={item.id}>
+            {console.log(eyes)}
             <Card
               sx={{
                 cursor: "pointer",

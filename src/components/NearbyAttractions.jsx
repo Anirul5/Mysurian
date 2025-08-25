@@ -113,9 +113,9 @@ export default function NearbyAttractions({ currentItem }) {
         Nearby Attractions
       </Typography>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <IconButton onClick={handlePrev} disabled={currentPage === 0}>
+        {/* <IconButton onClick={handlePrev} disabled={currentPage === 0}>
           <ChevronLeftIcon />
-        </IconButton>
+        </IconButton> */}
         <Box
           ref={containerRef}
           onScroll={handleScroll}
@@ -124,8 +124,9 @@ export default function NearbyAttractions({ currentItem }) {
             gap: 2,
             overflowX: "auto",
             scrollBehavior: "smooth",
-            px: 0.5, // partial peek
-            "&::-webkit-scrollbar": { display: "none" }, // hide scrollbar
+            px: 1, // partial peek
+            mr: 2,
+            "&::-webkit-scrollbar": { display: "block" }, // hide scrollbar
           }}
         >
           {nearby.map((item) => (
@@ -167,12 +168,12 @@ export default function NearbyAttractions({ currentItem }) {
             </Card>
           ))}
         </Box>
-        <IconButton
+        {/* <IconButton
           onClick={handleNext}
           disabled={currentPage >= totalPages - 1}
         >
           <ChevronRightIcon />
-        </IconButton>
+        </IconButton> */}
       </Box>
 
       {/* Dot indicators */}

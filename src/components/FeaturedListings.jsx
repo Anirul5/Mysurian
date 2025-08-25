@@ -26,8 +26,13 @@ export default function FeaturedListings() {
   };
 
   const picks = shuffleArray(
-    allItems.filter((item) => item.featured === "1" || item.featured === true)
-  ).slice(0, 6);
+    allItems.filter(
+      (item) =>
+        item.featured === "1" ||
+        item.featured === true ||
+        item.featured === "TRUE"
+    )
+  );
 
   const handleClick = (item) => navigate(`/${item.category}/${item.id}`);
 
