@@ -19,7 +19,7 @@ export default function Footer() {
 
   return (
     <Box
-      sx={{ width: "100%", backgroundColor: "#2c2c2c", color: "#fff", mt: 10 }}
+      sx={{ width: "100%", backgroundColor: "#2c2c2c", color: "#fff", mt: 2 }}
     >
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Grid container spacing={4}>

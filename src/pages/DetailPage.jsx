@@ -1,7 +1,15 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useLocation, Link } from "react-router-dom";
-import { doc, getDoc, increment, updateDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import React, { useEffect, useState, useRef } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
+import {
+  doc,
+  getDoc,
+  increment,
+  updateDoc,
+  setDoc,
+  arrayUnion,
+  arrayRemove,
+} from "firebase/firestore";
+import { db, auth } from "../firebaseConfig";
 import {
   Container,
   Typography,
@@ -14,7 +22,6 @@ import {
   IconButton,
   Skeleton,
   Breadcrumbs,
-  Link as MuiLink,
 } from "@mui/material";
 import { Helmet } from "react-helmet-async";
 import CallIcon from "@mui/icons-material/Call";
@@ -22,38 +29,49 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import LanguageIcon from "@mui/icons-material/Language";
 import ShareIcon from "@mui/icons-material/Share";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import { ArrowBack } from "@mui/icons-material";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { onAuthStateChanged } from "firebase/auth";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
 import useAllItems from "../hooks/useAllItems";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useNavigate } from "react-router-dom";
-import { useRef } from "react";
-import { auth } from "../firebaseConfig";
-import { onAuthStateChanged } from "firebase/auth";
-import { setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
-import FavoriteIcon from "@mui/icons-material/Favorite"; // filled heart
 import NearbyAttractions from "../components/NearbyAttractions";
 import Reviews from "../components/Reviews";
+
+/* ---------- Helpers for Google Places v1 Photos ---------- */
+const GP_API_KEY =
+  import.meta?.env?.VITE_GOOGLE_MAPS_API_KEY ||
+  process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+
+function getPhotoUrlFromName(photoName, maxWidthPx = 1600) {
+  if (!photoName || !GP_API_KEY) return "";
+  const params = new URLSearchParams({
+    maxWidthPx: String(maxWidthPx),
+    key: GP_API_KEY,
+  });
+  return `https://places.googleapis.com/v1/${photoName}/media?${params.toString()}`;
+}
 
 export default function DetailPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
   const category = location.pathname.split("/")[1];
+
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
-  const { allItems, loading: allItemsLoading } = useAllItems();
+
+  const { allItems } = useAllItems();
   const hasIncremented = useRef(false);
 
   const placeholderImage =
     "https://images.unsplash.com/photo-1679239108020-aca50acd5f00?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZnJlZSUyMGltYWdlcyUyMGNpdHl8ZW58MHx8MHx8fDA%3D";
-  const placeholderCover =
-    "https://images.unsplash.com/photo-1679239108020-aca50acd5f00?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZnJlZSUyMGltYWdlcyUyMGNpdHl8ZW58MHx8MHx8fDA%3D";
+  const placeholderCover = placeholderImage;
 
-  // Inside your component
+  // User + favorites
   const [user, setUser] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -61,8 +79,6 @@ export default function DetailPage() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-
-        // Check if current item is in user's favorites
         const userRef = doc(db, "users", currentUser.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
@@ -82,7 +98,6 @@ export default function DetailPage() {
       alert("Please log in to save favorites.");
       return;
     }
-
     const userRef = doc(db, "users", user.uid);
     const itemData = {
       id,
@@ -104,14 +119,10 @@ export default function DetailPage() {
     }
 
     if (isFavorite) {
-      await updateDoc(userRef, {
-        favorites: arrayRemove(itemData),
-      });
+      await updateDoc(userRef, { favorites: arrayRemove(itemData) });
       setIsFavorite(false);
     } else {
-      await updateDoc(userRef, {
-        favorites: arrayUnion(itemData),
-      });
+      await updateDoc(userRef, { favorites: arrayUnion(itemData) });
       setIsFavorite(true);
     }
   };
@@ -120,7 +131,6 @@ export default function DetailPage() {
     const fetchItem = async () => {
       try {
         setLoading(true);
-
         const collectionName = decodeURIComponent(category);
         const docRef = doc(db, collectionName, id);
         const snapshot = await getDoc(docRef);
@@ -128,12 +138,11 @@ export default function DetailPage() {
         if (snapshot.exists()) {
           const data = snapshot.data();
 
-          // Unique key for this listing
+          // Unique per-listing view counter (session-scoped)
           const viewKey = `viewed-${collectionName}-${id}`;
           let addedViews = 0;
-
           if (!sessionStorage.getItem(viewKey)) {
-            sessionStorage.setItem(viewKey, "true"); // ✅ set first
+            sessionStorage.setItem(viewKey, "true");
             await updateDoc(docRef, { views: increment(1) });
             addedViews = 1;
           }
@@ -145,7 +154,6 @@ export default function DetailPage() {
             views: (data.views || 0) + addedViews,
           });
         } else {
-          console.warn("Item not found");
           setItem(null);
         }
       } catch (err) {
@@ -155,7 +163,6 @@ export default function DetailPage() {
         setLoading(false);
       }
     };
-
     fetchItem();
   }, [category, id]);
 
@@ -169,34 +176,32 @@ export default function DetailPage() {
     }
   };
 
-  // FIX: Parse gallery from ["url1, url2, ..."] into a clean array
-  const parseGallery = (gallery) => {
+  /* ---- Parse gallery from your new schema (array of {placePhotoName,...}) ---- */
+  const getGalleryUrls = (gallery) => {
     if (!gallery) return [];
-
+    // If it's the new array of objects from Places v1
+    if (Array.isArray(gallery)) {
+      return gallery
+        .map((g) => getPhotoUrlFromName(g?.placePhotoName, 1200))
+        .filter(Boolean);
+    }
+    // Backward-compat: if someone saved a CSV string
     if (typeof gallery === "string") {
       return gallery
         .split(",")
         .map((url) => url.trim())
         .filter((url) => url.length > 0);
     }
-
-    if (Array.isArray(gallery)) {
-      return gallery.map((url) => url.trim());
-    }
-
     return [];
   };
 
-  const galleryItems = parseGallery(item?.gallery);
-
-  const isValidMapEmbed = (url) =>
-    typeof url === "string" &&
-    url.startsWith("https://www.google.com/maps/embed");
+  const galleryItems = getGalleryUrls(item?.gallery);
+  const coverUrl = item?.image || galleryItems[0] || placeholderCover;
 
   const formattedCategory = category
     ?.replace(/_/g, " ")
     .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 
   return (
@@ -219,6 +224,7 @@ export default function DetailPage() {
           }
         />
       </Helmet>
+
       {loading ? (
         <Container sx={{ mt: 4 }}>
           <Typography>Loading...</Typography>
@@ -229,8 +235,8 @@ export default function DetailPage() {
         </Container>
       ) : (
         <Container sx={{ mt: 4 }}>
-          {/* Breadcrumbs */}
-          <Box mb={2}>
+          {/* Breadcrumbs / Back */}
+          <Box mb={0}>
             <Breadcrumbs aria-label="breadcrumb">
               <Button
                 startIcon={<ArrowBackIcon />}
@@ -243,92 +249,83 @@ export default function DetailPage() {
             </Breadcrumbs>
           </Box>
 
-          {/* Cover Image */}
-          {loading ? (
-            <Skeleton
-              variant="rectangular"
-              width="100%"
-              height={350}
-              sx={{ borderRadius: 2, mb: 3 }}
+          {/* Cover Image (now uses gallery[0] when available) */}
+          <Box
+            sx={{
+              position: "relative",
+              height: 350,
+              overflow: "hidden",
+              borderRadius: 2,
+              mb: 3,
+              "&:hover img": { transform: "scale(1.05)" },
+            }}
+          >
+            <img
+              src={coverUrl}
+              alt={item?.name}
+              onError={(e) => (e.currentTarget.src = placeholderCover)}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                transition: "transform 0.5s ease",
+              }}
             />
-          ) : (
             <Box
               sx={{
-                position: "relative",
-                height: 350,
-                overflow: "hidden",
-                borderRadius: 2,
-                mb: 3,
-                "&:hover img": { transform: "scale(1.05)" },
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(to top right, rgba(0,0,0,0.6), rgba(0,0,0,0))",
+              }}
+            />
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: 16,
+                left: 16,
+                color: "#fff",
+                textShadow: "0 2px 4px rgba(0,0,0,0.6)",
               }}
             >
-              <img
-                src={item?.image || placeholderCover}
-                alt={item?.name}
-                onError={(e) => (e.target.src = placeholderCover)}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  transition: "transform 0.5s ease",
-                }}
-              />
-              <Box
-                sx={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(to top right, rgba(0,0,0,0.6), rgba(0,0,0,0))",
-                }}
-              />
-              <Box
-                sx={{
-                  position: "absolute",
-                  bottom: 16,
-                  left: 16,
-                  color: "#fff",
-                  textShadow: "0 2px 4px rgba(0,0,0,0.6)",
-                }}
-              >
-                <Typography variant="h5" fontWeight="bold">
-                  {item.name}
-                </Typography>
-                {item?.rating && (
-                  <Box display="flex" alignItems="center" mt={0.5}>
-                    <Rating
-                      value={item.rating}
-                      precision={0.1}
-                      readOnly
-                      sx={{ color: "#fff" }}
-                    />
-                    <Typography variant="body2" sx={{ ml: 1 }}>
-                      {item.rating} / 5
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-              <Box sx={{ position: "absolute", top: 8, right: 8 }}>
-                <IconButton
-                  component="span"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleShare();
-                  }}
-                  sx={{ color: "#fff" }}
-                >
-                  <ShareIcon />
-                </IconButton>
-                <IconButton sx={{ color: "#fff" }}>
-                  <IconButton
-                    onClick={toggleFavorite}
-                    sx={{ color: isFavorite ? "red" : "#fff" }}
-                  >
-                    {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-                  </IconButton>
-                </IconButton>
-              </Box>
+              <Typography variant="h5" fontWeight="bold">
+                {item.name}
+              </Typography>
+              {typeof item?.rating === "number" && (
+                <Box display="flex" alignItems="center" mt={0.5}>
+                  <Rating
+                    value={item.rating}
+                    precision={0.1}
+                    readOnly
+                    sx={{ color: "#fff" }}
+                  />
+                  <Typography variant="body2" sx={{ ml: 1 }}>
+                    {item.rating} / 5
+                    {typeof item.userRatingCount === "number" &&
+                      ` · ${item.userRatingCount} reviews`}
+                  </Typography>
+                </Box>
+              )}
             </Box>
-          )}
+            <Box sx={{ position: "absolute", top: 8, right: 8 }}>
+              <IconButton
+                component="span"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShare();
+                }}
+                sx={{ color: "#fff" }}
+              >
+                <ShareIcon />
+              </IconButton>
+              <IconButton
+                onClick={toggleFavorite}
+                sx={{ color: isFavorite ? "red" : "#fff" }}
+              >
+                {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+              </IconButton>
+            </Box>
+          </Box>
 
           {/* Gallery */}
           {galleryItems.length > 0 && (
@@ -352,7 +349,9 @@ export default function DetailPage() {
                         component="img"
                         height="180"
                         image={img || placeholderImage}
-                        onError={(e) => (e.target.src = placeholderImage)}
+                        onError={(e) =>
+                          (e.currentTarget.src = placeholderImage)
+                        }
                         alt={`${item.name} image ${index + 1}`}
                         sx={{
                           objectFit: "cover",
@@ -390,91 +389,67 @@ export default function DetailPage() {
           )}
 
           {/* Description */}
-          {loading ? (
-            <Skeleton variant="text" width="100%" height={60} />
-          ) : (
-            item?.description && (
-              <Typography variant="body2" paragraph>
-                {item.description}
-              </Typography>
-            )
+          {item?.description && (
+            <Typography variant="body2" paragraph>
+              {item.description}
+            </Typography>
           )}
 
           {/* Contact Buttons */}
-          {loading ? (
-            <Skeleton
-              variant="rectangular"
-              width={180}
-              height={38}
-              sx={{ mb: 3, borderRadius: 2 }}
-            />
-          ) : (
-            <Box display="flex" gap={2} flexWrap="wrap" mb={3}>
-              {item.contact && (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<CallIcon />}
-                  href={`tel:${item.contact}`}
-                >
-                  Call Now
-                </Button>
-              )}
-              {item.whatsapp && (
-                <Button
-                  variant="contained"
-                  color="success"
-                  startIcon={<WhatsAppIcon />}
-                  href={`https://wa.me/${item.whatsapp}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  WhatsApp
-                </Button>
-              )}
-              {item.website && (
-                <Button
-                  variant="contained"
-                  color="info"
-                  startIcon={<LanguageIcon />}
-                  href={item.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Visit Website
-                </Button>
-              )}
-            </Box>
-          )}
+          <Box display="flex" gap={2} flexWrap="wrap" mb={3}>
+            {item?.contact && (
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<CallIcon />}
+                href={`tel:${String(item.contact).replace(/\s+/g, "")}`}
+              >
+                Call Now
+              </Button>
+            )}
+            {item?.whatsapp && (
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<WhatsAppIcon />}
+                href={`https://wa.me/${item.whatsapp}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                WhatsApp
+              </Button>
+            )}
+            {item?.website && (
+              <Button
+                variant="contained"
+                color="info"
+                startIcon={<LanguageIcon />}
+                href={item.website}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Visit Website
+              </Button>
+            )}
+          </Box>
 
           {/* Address */}
-          {loading ? (
-            <Skeleton variant="text" width="60%" height={25} />
-          ) : (
-            item?.address && (
-              <>
-                <Typography variant="h6" gutterBottom>
-                  Address
-                </Typography>
-                <Typography variant="body2" paragraph>
-                  {item.address}
-                </Typography>
-              </>
-            )
+          {item?.address && (
+            <>
+              <Typography variant="h6" gutterBottom>
+                Address
+              </Typography>
+              <Typography variant="body2" paragraph>
+                {item.address}
+              </Typography>
+            </>
           )}
 
-          {/* Map Embed */}
-          {loading ? (
-            <Skeleton
-              variant="rectangular"
-              width="100%"
-              height={300}
-              sx={{ borderRadius: 2 }}
-            />
-          ) : isValidMapEmbed(item?.mapurl) ? (
+          {/* Map Embed (uses item.mapEmbed from your doc) */}
+          {item?.mapEmbed ? (
             <Box sx={{ mb: 4, borderRadius: 2, overflow: "hidden" }}>
               <iframe
-                src={item.mapurl}
+                src={item.mapEmbed}
                 width="100%"
                 height="300"
                 style={{ border: 0 }}
@@ -489,16 +464,14 @@ export default function DetailPage() {
             </Typography>
           )}
 
-          {/* User Comment */}
+          {/* User Comments */}
           <Box mb={4}>
             <Reviews categoryId={category} itemId={id} currentUser={user} />
           </Box>
 
           {/* Nearby Attractions */}
           <Box mb={4}>
-            <Typography variant="h6" gutterBottom>
-              {/* Nearby Attractions */}
-            </Typography>
+            <Typography variant="h6" gutterBottom></Typography>
             <NearbyAttractions currentItem={item} />
           </Box>
         </Container>

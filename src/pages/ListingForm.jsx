@@ -8,59 +8,63 @@ import {
   Paper,
   Grid,
   Divider,
+  IconButton,
+  Stack,
 } from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../firebaseConfig";
 import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
 
-// EXACT categories from your PDF
-const CATEGORY_OPTIONS = [
-  "Gyms & Fitness",
-  "Hotels & Stays",
-  "Restaurants & Cafes",
-  "Tourist Attractions",
-  "Festivals & Events",
-  "Shopping & Markets",
-  "Education",
-  "Healthcare",
-  "Transportation",
-  "Street Foods (Food Streets)",
-  "Movie Theaters",
-  "Parks",
-  "Playgrounds",
-  "Entertainment (Bowling, Snooker, Etc)",
-  "Libraries",
-  "Co-working Spaces",
-  "Religious Places",
-  "Cultural Centers / Museums",
-  "Salons & Beauty Services",
-  "Laundry & Dry Cleaning",
-  "Repair Services (Electronics, Appliances)",
-  "Plumbing & Electrical Services",
-  "Pet Services (Vets, Grooming)",
-  "Automobile Services (Garages, Car Washes)",
-  "Tech & Electronics Stores",
-  "Emergency Contacts (Police, Ambulance, Fire)",
-  "Wellness & Spas",
-  "Sports Clubs / Academies",
-];
+// Mapping of categoryId → human-readable name
+const CATEGORY_MAP = {
+  gyms_fitness: "Gyms & Fitness",
+  hotels_stays: "Hotels & Stays",
+  restaurants_cafes: "Restaurants & Cafes",
+  tourist_attractions: "Tourist Attractions",
+  festivals_events: "Festivals & Events",
+  shopping_markets: "Shopping & Markets",
+  education: "Education",
+  healthcare: "Healthcare",
+  transportation: "Transportation",
+  food_streets: "Street Foods (Food Streets)",
+  movie_theaters: "Movie Theaters",
+  parks: "Parks",
+  playgrounds: "Playgrounds",
+  entertainment: "Entertainment (Bowling, Snooker, Etc)",
+  libraries: "Libraries",
+  coworking_spaces: "Co-working Spaces",
+  religious_places: "Religious Places",
+  cultural_centers: "Cultural Centers / Museums",
+  salons_beauty: "Salons & Beauty Services",
+  laundry: "Laundry & Dry Cleaning",
+  repair_services: "Repair Services (Electronics, Appliances)",
+  plumbing_electrical: "Plumbing & Electrical Services",
+  pet_services: "Pet Services (Vets, Grooming)",
+  automobile_services: "Automobile Services (Garages, Car Washes)",
+  tech_electronics: "Tech & Electronics Stores",
+  emergency_contacts: "Emergency Contacts (Police, Ambulance, Fire)",
+  wellness_spas: "Wellness & Spas",
+  sports_clubs: "Sports Clubs / Academies",
+};
 
 // Fixed fields exactly like the PDF
 const DEFAULT_FIELDS = {
   name: "",
   description: "",
-  category: "",
-  address: "", // LONG TEXT
+  category: "", // human-readable name
+  address: "",
   rating: "",
   website: "",
   contact: "",
   whatsapp: "",
   image: "",
-  gallery: "",
-  mapurl: "",
-  featured: "FALSE", // TRUE/FALSE dropdown
-  eyes: "FALSE", // TRUE/FALSE dropdown
+  gallery: "", // CSV text input for quick edits
+  mapurl: "", // we’ll also mirror to mapEmbed on save
+  featured: "FALSE",
+  eyes: "FALSE",
 };
 
 const tf = (v) =>
@@ -68,37 +72,118 @@ const tf = (v) =>
     ? "TRUE"
     : "FALSE";
 
+// turn any non-primitive into a readable string for preview
+const safeDisplay = (v) => {
+  if (v == null) return "-";
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean")
+    return String(v);
+  try {
+    return JSON.stringify(v, null, 2);
+  } catch {
+    return String(v);
+  }
+};
+
+// normalize incoming Firestore data to the shape the form expects
+const normalizeLoadedData = (data, categoryName) => {
+  // gallery may be:
+  // - string (leave as is)
+  // - array of strings (join)
+  // - array of objects with { placePhotoName, ... } (join names)
+  let galleryStr = "";
+  let galleryObjects = [];
+  if (Array.isArray(data.gallery)) {
+    galleryObjects = data.gallery.map((g) =>
+      typeof g === "string"
+        ? { placePhotoName: g, widthPx: "", heightPx: "" }
+        : {
+            placePhotoName: g?.placePhotoName || "",
+            widthPx: g?.widthPx ?? "",
+            heightPx: g?.heightPx ?? "",
+          }
+    );
+    const parts = galleryObjects.map((g) => g.placePhotoName).filter(Boolean);
+    galleryStr = parts.join(", ");
+  } else if (typeof data.gallery === "string") {
+    galleryStr = data.gallery;
+  }
+
+  // prefer mapEmbed when present
+  const mapurl = data.mapurl || data.mapEmbed || "";
+
+  return {
+    baseFields: {
+      ...DEFAULT_FIELDS,
+      ...data,
+      category: categoryName,
+      gallery: galleryStr,
+      mapurl,
+      featured: tf(data.featured),
+      eyes: tf(data.eyes),
+      rating:
+        data.rating === undefined || data.rating === null
+          ? ""
+          : String(data.rating),
+    },
+    galleryObjects,
+  };
+};
+
+const emptyGalleryRow = { placePhotoName: "", widthPx: "", heightPx: "" };
+
 const ListingForm = () => {
   const { categoryId, listingId } = useParams();
   const navigate = useNavigate();
+
   const [fields, setFields] = useState(DEFAULT_FIELDS);
+  const [galleryRows, setGalleryRows] = useState([emptyGalleryRow]);
   const [previewMode, setPreviewMode] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // Resolve human-readable category name
+  const categoryName = CATEGORY_MAP[categoryId] || categoryId;
+
   useEffect(() => {
-    if (!listingId) return;
+    if (!listingId) {
+      // For new listings, prefill the category name
+      setFields((prev) => ({ ...prev, category: categoryName }));
+      setGalleryRows([emptyGalleryRow]);
+      return;
+    }
     (async () => {
       const ref = doc(db, categoryId, listingId);
       const snap = await getDoc(ref);
       if (snap.exists()) {
         const data = snap.data() || {};
-        setFields({
-          ...DEFAULT_FIELDS,
-          ...data,
-          featured: tf(data.featured),
-          eyes: tf(data.eyes),
-          rating:
-            data.rating === undefined || data.rating === null
-              ? ""
-              : String(data.rating),
-        });
+        const { baseFields, galleryObjects } = normalizeLoadedData(
+          data,
+          categoryName
+        );
+        setFields(baseFields);
+        setGalleryRows(
+          galleryObjects.length ? galleryObjects : [emptyGalleryRow]
+        );
       }
     })();
-  }, [listingId, categoryId]);
+  }, [listingId, categoryId, categoryName]);
 
   const handleChange = (key, value) => {
-    setFields((prev) => ({ ...prev, [key]: value }));
+    setFields((prev) => ({ ...prev, [key]: value ?? "" }));
   };
+
+  const handleGalleryRowChange = (index, key, value) => {
+    setGalleryRows((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [key]: value };
+      return next;
+    });
+  };
+
+  const addGalleryRow = () =>
+    setGalleryRows((prev) => [...prev, { ...emptyGalleryRow }]);
+
+  const removeGalleryRow = (index) =>
+    setGalleryRows((prev) => prev.filter((_, i) => i !== index));
 
   const validate = () => {
     const e = {};
@@ -107,21 +192,52 @@ const ListingForm = () => {
     if (!fields.category) e.category = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
+    // (you can add more validation as needed)
   };
 
   const handleSubmit = async () => {
     if (!validate()) return;
 
+    // Build gallery payload:
+    // If galleryRows contain at least one row with placePhotoName, use object array.
+    // Else fall back to CSV string from `fields.gallery`.
+    const rowsWithName = galleryRows.filter(
+      (r) => (r.placePhotoName || "").trim() !== ""
+    );
+    let galleryPayload = null;
+    if (rowsWithName.length) {
+      galleryPayload = rowsWithName.map((r) => ({
+        placePhotoName: r.placePhotoName.trim(),
+        // store numbers if valid, else omit
+        ...(r.widthPx !== ""
+          ? { widthPx: Number(r.widthPx) || r.widthPx }
+          : {}),
+        ...(r.heightPx !== ""
+          ? { heightPx: Number(r.heightPx) || r.heightPx }
+          : {}),
+      }));
+    } else if (fields.gallery.trim()) {
+      galleryPayload = fields.gallery
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    } else {
+      galleryPayload = [];
+    }
+
     const payload = {
       ...fields,
-      // ensure rating is numeric within 0–5 (or saved empty)
+      gallery: galleryPayload,
+      categoryId, // machine-safe category id
+      category: categoryName, // human-readable label
       rating:
         fields.rating === "" || isNaN(parseFloat(fields.rating))
           ? ""
           : Math.max(0, Math.min(5, parseFloat(fields.rating))),
-      // keep booleans exactly as strings "TRUE"/"FALSE"
       featured: tf(fields.featured),
       eyes: tf(fields.eyes),
+      // mirror mapurl to mapEmbed for DetailPage compatibility
+      mapEmbed: fields.mapurl || "",
     };
 
     if (listingId) {
@@ -129,7 +245,7 @@ const ListingForm = () => {
     } else {
       await addDoc(collection(db, categoryId), {
         ...payload,
-        date: new Date().toISOString().split("T")[0], // you can remove if not needed
+        date: new Date().toISOString().split("T")[0],
       });
     }
     navigate(`/admin/${categoryId}/listings`);
@@ -190,26 +306,14 @@ const ListingForm = () => {
               />
             </Grid>
 
-            {/* Category */}
+            {/* Category (read-only, resolved from URL) */}
             <Grid item xs={12} display={"contents"}>
               <TextField
                 label="Category"
-                select
                 fullWidth
-                required
-                value={fields.category}
-                error={Boolean(errors.category)}
-                helperText={errors.category}
-                onChange={(e) => handleChange("category", e.target.value)}
-                SelectProps={{ displayEmpty: true }}
-              >
-                <MenuItem value="">{/* <em>Select Category</em> */}</MenuItem>
-                {CATEGORY_OPTIONS.map((opt) => (
-                  <MenuItem key={opt} value={opt}>
-                    {opt}
-                  </MenuItem>
-                ))}
-              </TextField>
+                value={categoryName}
+                InputProps={{ readOnly: true }}
+              />
             </Grid>
 
             {/* Address */}
@@ -264,14 +368,87 @@ const ListingForm = () => {
               />
             </Grid>
 
-            {/* Gallery */}
+            {/* Gallery (CSV quick edit) */}
             <Grid item xs={12} display={"contents"}>
               <TextField
-                label="Gallery (comma separated URLs)"
+                label="Gallery (comma separated URLs or photo names)"
                 fullWidth
                 value={fields.gallery}
                 onChange={(e) => handleChange("gallery", e.target.value)}
               />
+            </Grid>
+
+            {/* Advanced Gallery Editor (array of objects) */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                Advanced Gallery Editor
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mb: 1 }}
+              >
+                Use this to save gallery as objects (placePhotoName, widthPx,
+                heightPx). If you fill at least one row here, the CSV above will
+                be ignored on save.
+              </Typography>
+
+              {galleryRows.map((row, idx) => (
+                <Stack
+                  key={idx}
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1.5}
+                  alignItems="center"
+                  sx={{ mb: 1.5 }}
+                >
+                  <TextField
+                    label="placePhotoName"
+                    fullWidth
+                    value={row.placePhotoName}
+                    onChange={(e) =>
+                      handleGalleryRowChange(
+                        idx,
+                        "placePhotoName",
+                        e.target.value
+                      )
+                    }
+                  />
+                  <TextField
+                    label="widthPx"
+                    type="number"
+                    sx={{ minWidth: 120 }}
+                    value={row.widthPx}
+                    onChange={(e) =>
+                      handleGalleryRowChange(idx, "widthPx", e.target.value)
+                    }
+                  />
+                  <TextField
+                    label="heightPx"
+                    type="number"
+                    sx={{ minWidth: 120 }}
+                    value={row.heightPx}
+                    onChange={(e) =>
+                      handleGalleryRowChange(idx, "heightPx", e.target.value)
+                    }
+                  />
+                  <IconButton
+                    aria-label="remove photo row"
+                    onClick={() => removeGalleryRow(idx)}
+                    color="error"
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Stack>
+              ))}
+              <Button
+                startIcon={<AddIcon />}
+                variant="outlined"
+                color="secondary"
+                onClick={addGalleryRow}
+                sx={{ mt: 0.5 }}
+              >
+                Add Photo Row
+              </Button>
             </Grid>
 
             {/* Map URL */}
@@ -337,10 +514,19 @@ const ListingForm = () => {
                     {k}
                   </Typography>
                   <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-                    {v || "-"}
+                    {safeDisplay(v)}
                   </Typography>
                 </Grid>
               ))}
+
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  gallery (object rows)
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+                  {safeDisplay(galleryRows)}
+                </Typography>
+              </Grid>
             </Grid>
           </>
         )}

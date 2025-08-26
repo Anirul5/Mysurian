@@ -21,7 +21,7 @@ export default function EyesAreLookingAt() {
   );
   if (!eyes.length) return null;
 
-  const go = (item) => navigate(`/${item.category}/${item.id}`);
+  const go = (item) => navigate(`/${item.categoryId}/${item.id}`);
 
   return (
     <>
@@ -32,7 +32,7 @@ export default function EyesAreLookingAt() {
       >
         {eyes.map((item) => (
           <Grid item xs={12} sm={6} md={4} key={item.id}>
-            {console.log(eyes)}
+            {console.log(item)}
             <Card
               sx={{
                 cursor: "pointer",
