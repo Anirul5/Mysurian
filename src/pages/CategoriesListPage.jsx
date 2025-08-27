@@ -196,7 +196,7 @@ const CategoriesListPage = () => {
                         objectFit: "cover",
                         backgroundColor: "grey.100",
                       }}
-                      image={imageForCategory || placeholderImage}
+                      image={category.image || placeholderImage}
                       alt={displayName}
                       loading="lazy"
                       onError={(e) => {

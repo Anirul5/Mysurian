@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   doc,
@@ -34,22 +34,99 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { onAuthStateChanged } from "firebase/auth";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
-import useAllItems from "../hooks/useAllItems";
 import NearbyAttractions from "../components/NearbyAttractions";
 import Reviews from "../components/Reviews";
+import MapEmbed from "../components/MapEmbed";
+import DOMPurify from "dompurify";
 
-/* ---------- Helpers for Google Places v1 Photos ---------- */
-const GP_API_KEY =
-  import.meta?.env?.VITE_GOOGLE_MAPS_API_KEY ||
-  process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+const placeholderImage =
+  "https://images.unsplash.com/photo-1679239108020-aca50acd5f00?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0";
+const placeholderCover = placeholderImage;
 
-function getPhotoUrlFromName(photoName, maxWidthPx = 1600) {
-  if (!photoName || !GP_API_KEY) return "";
-  const params = new URLSearchParams({
-    maxWidthPx: String(maxWidthPx),
-    key: GP_API_KEY,
-  });
-  return `https://places.googleapis.com/v1/${photoName}/media?${params.toString()}`;
+/* ---------- Reusable Cover Image with Skeleton ---------- */
+function CoverImage({ src, alt }) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        height: 350,
+        overflow: "hidden",
+        borderRadius: 2,
+        mb: 3,
+        "&:hover img": { transform: "scale(1.05)" },
+      }}
+    >
+      {!loaded && !error && (
+        <Skeleton
+          variant="rectangular"
+          width="100%"
+          height="100%"
+          animation="wave"
+        />
+      )}
+      <img
+        src={error ? placeholderCover : src}
+        alt={alt}
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          setError(true);
+          setLoaded(true);
+        }}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          transition: "transform 0.5s ease",
+          display: loaded ? "block" : "none",
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(to top right, rgba(0,0,0,0.6), rgba(0,0,0,0))",
+        }}
+      />
+    </Box>
+  );
+}
+
+function ThumbImage({ src, alt, height = 180 }) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  return (
+    <Box sx={{ position: "relative", height, overflow: "hidden" }}>
+      {!loaded && !error && (
+        <Skeleton
+          variant="rectangular"
+          width="100%"
+          height="100%"
+          animation="wave"
+        />
+      )}
+      <img
+        src={error ? placeholderImage : src}
+        alt={alt}
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          setError(true);
+          setLoaded(true);
+        }}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          display: loaded ? "block" : "none",
+          transition: "transform 0.5s ease",
+        }}
+      />
+    </Box>
+  );
 }
 
 export default function DetailPage() {
@@ -63,13 +140,6 @@ export default function DetailPage() {
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
-
-  const { allItems } = useAllItems();
-  const hasIncremented = useRef(false);
-
-  const placeholderImage =
-    "https://images.unsplash.com/photo-1679239108020-aca50acd5f00?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZnJlZSUyMGltYWdlcyUyMGNpdHl8ZW58MHx8MHx8fDA%3D";
-  const placeholderCover = placeholderImage;
 
   // User + favorites
   const [user, setUser] = useState(null);
@@ -98,6 +168,8 @@ export default function DetailPage() {
       alert("Please log in to save favorites.");
       return;
     }
+    if (!item) return;
+
     const userRef = doc(db, "users", user.uid);
     const itemData = {
       id,
@@ -176,23 +248,33 @@ export default function DetailPage() {
     }
   };
 
-  /* ---- Parse gallery from your new schema (array of {placePhotoName,...}) ---- */
+  /* ---- Parse gallery from your schema ---- */
   const getGalleryUrls = (gallery) => {
     if (!gallery) return [];
-    // If it's the new array of objects from Places v1
     if (Array.isArray(gallery)) {
-      return gallery
-        .map((g) => getPhotoUrlFromName(g?.placePhotoName, 1200))
-        .filter(Boolean);
+      return gallery.map(resolveGallerySrc).filter(Boolean);
     }
-    // Backward-compat: if someone saved a CSV string
     if (typeof gallery === "string") {
       return gallery
         .split(",")
-        .map((url) => url.trim())
-        .filter((url) => url.length > 0);
+        .map((s) => s.trim())
+        .filter((s) => /^(https?:)?\/\//i.test(s));
     }
     return [];
+  };
+
+  // Resolve gallery item to a usable image URL.
+  // Supports plain strings or objects with url/src/placePhotoName.
+  // If it's already a URL, we use it; otherwise we skip (no API calls).
+  const resolveGallerySrc = (item) => {
+    if (!item) return "";
+    if (typeof item === "string") return item.trim();
+
+    const val = item.url || item.src || item.placePhotoName || "";
+    if (!val) return "";
+
+    // only accept real URLs (no Places photoName → we avoid API calls)
+    return /^(https?:)?\/\//i.test(val) ? val : "";
   };
 
   const galleryItems = getGalleryUrls(item?.gallery);
@@ -249,36 +331,9 @@ export default function DetailPage() {
             </Breadcrumbs>
           </Box>
 
-          {/* Cover Image (now uses gallery[0] when available) */}
-          <Box
-            sx={{
-              position: "relative",
-              height: 350,
-              overflow: "hidden",
-              borderRadius: 2,
-              mb: 3,
-              "&:hover img": { transform: "scale(1.05)" },
-            }}
-          >
-            <img
-              src={coverUrl}
-              alt={item?.name}
-              onError={(e) => (e.currentTarget.src = placeholderCover)}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                transition: "transform 0.5s ease",
-              }}
-            />
-            <Box
-              sx={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "linear-gradient(to top right, rgba(0,0,0,0.6), rgba(0,0,0,0))",
-              }}
-            />
+          {/* Cover Image */}
+          <Box sx={{ position: "relative" }}>
+            <CoverImage src={coverUrl} alt={item?.name} />
             <Box
               sx={{
                 position: "absolute",
@@ -326,11 +381,11 @@ export default function DetailPage() {
               </IconButton>
             </Box>
           </Box>
-
           {/* Gallery */}
-          {galleryItems.length > 0 && (
+          {item.gallery.length > 0 && (
             <>
               <Grid container spacing={2} mb={3}>
+                {console.log(item.galleryItems)}
                 {galleryItems.map((img, index) => (
                   <Grid item xs={12} sm={6} md={4} key={index}>
                     <Card
@@ -345,18 +400,9 @@ export default function DetailPage() {
                         "&:hover img": { transform: "scale(1.05)" },
                       }}
                     >
-                      <CardMedia
-                        component="img"
-                        height="180"
-                        image={img || placeholderImage}
-                        onError={(e) =>
-                          (e.currentTarget.src = placeholderImage)
-                        }
+                      <ThumbImage
+                        src={img || placeholderImage}
                         alt={`${item.name} image ${index + 1}`}
-                        sx={{
-                          objectFit: "cover",
-                          transition: "transform 0.5s ease",
-                        }}
                       />
                     </Card>
                   </Grid>
@@ -389,10 +435,40 @@ export default function DetailPage() {
           )}
 
           {/* Description */}
+          {/* Description (rich blog style) */}
           {item?.description && (
-            <Typography variant="body2" paragraph>
-              {item.description}
-            </Typography>
+            <Box
+              sx={{
+                mt: 3,
+                mb: 4,
+                p: { xs: 2, sm: 3 },
+                backgroundColor: "#fafafa",
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+                // blog styles
+                "& h1,& h2,& h3": { fontWeight: 700, mt: 2.5, mb: 1 },
+                "& h1": { fontSize: "1.6rem" },
+                "& h2": { fontSize: "1.35rem" },
+                "& h3": { fontSize: "1.15rem" },
+                "& p": { lineHeight: 1.8, mb: 2 },
+                "& ul, & ol": { pl: 3, mb: 2 },
+                "& blockquote": {
+                  borderLeft: "4px solid #e0e0e0",
+                  pl: 2,
+                  color: "text.secondary",
+                  fontStyle: "italic",
+                  my: 2,
+                },
+              }}
+            >
+              <div
+                // sanitize any HTML from Firestore
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(item.description),
+                }}
+              />
+            </Box>
           )}
 
           {/* Contact Buttons */}
@@ -445,23 +521,9 @@ export default function DetailPage() {
             </>
           )}
 
-          {/* Map Embed (uses item.mapEmbed from your doc) */}
-          {item?.mapEmbed ? (
-            <Box sx={{ mb: 4, borderRadius: 2, overflow: "hidden" }}>
-              <iframe
-                src={item.mapEmbed}
-                width="100%"
-                height="300"
-                style={{ border: 0 }}
-                allowFullScreen=""
-                loading="lazy"
-                title="Google Map"
-              ></iframe>
-            </Box>
-          ) : (
-            <Typography variant="body2" color="text.secondary" mb={2}>
-              Map not available.
-            </Typography>
+          {/* Map Embed (supports both mapEmbed + legacy mapurl) */}
+          {(item?.mapEmbed || item?.mapurl) && (
+            <MapEmbed value={item.mapEmbed || item.mapurl} />
           )}
 
           {/* User Comments */}
@@ -471,7 +533,6 @@ export default function DetailPage() {
 
           {/* Nearby Attractions */}
           <Box mb={4}>
-            <Typography variant="h6" gutterBottom></Typography>
             <NearbyAttractions currentItem={item} />
           </Box>
         </Container>

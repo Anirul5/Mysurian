@@ -25,7 +25,7 @@ export default function FeaturedTopics() {
     .sort((a, b) => (b.views || 0) - (a.views || 0))
     .slice(0, 6);
 
-  const go = (item) => navigate(`/${item.category}/${item.id}`);
+  const go = (item) => navigate(`/${item.categoryId}/${item.id}`);
 
   return (
     <Grid

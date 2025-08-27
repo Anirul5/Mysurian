@@ -32,7 +32,6 @@ export default function EyesAreLookingAt() {
       >
         {eyes.map((item) => (
           <Grid item xs={12} sm={6} md={4} key={item.id}>
-            {console.log(item)}
             <Card
               sx={{
                 cursor: "pointer",

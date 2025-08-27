@@ -194,7 +194,7 @@ export default function NearbyAttractions({ currentItem }) {
             ))}
           </Box>
           {/* Left fade (only show if scrolled > 0) */}
-          {scrollLeft > 0 && (
+          {/* {scrollLeft > 0 && (
             <Box
               sx={{
                 position: "absolute",
@@ -206,7 +206,7 @@ export default function NearbyAttractions({ currentItem }) {
                 background: "linear-gradient(to left, transparent, white)",
               }}
             />
-          )}
+          )} */}
 
           {/* Right fade (always visible if scrollable) */}
           {scrollLeft < scrollMax && (
@@ -225,7 +225,6 @@ export default function NearbyAttractions({ currentItem }) {
         </Box>
       </Box>
 
-      {/* Dot indicators */}
       {/* Dot indicators */}
       <Stack direction="row" justifyContent="center" mt={2}>
         {Array.from({

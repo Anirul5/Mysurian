@@ -18,6 +18,13 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 
+// TipTap (React 19 friendly)
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Link from "@tiptap/extension-link";
+
+/* ----------------------------- Utilities ----------------------------- */
+
 // Mapping of categoryId → human-readable name
 const CATEGORY_MAP = {
   gyms_fitness: "Gyms & Fitness",
@@ -53,7 +60,7 @@ const CATEGORY_MAP = {
 // Fixed fields exactly like the PDF
 const DEFAULT_FIELDS = {
   name: "",
-  description: "",
+  description: "", // now HTML from TipTap
   category: "", // human-readable name
   address: "",
   rating: "",
@@ -62,7 +69,7 @@ const DEFAULT_FIELDS = {
   whatsapp: "",
   image: "",
   gallery: "", // CSV text input for quick edits
-  mapurl: "", // we’ll also mirror to mapEmbed on save
+  mapurl: "", // stored and mirrored to mapEmbed
   featured: "FALSE",
   eyes: "FALSE",
 };
@@ -71,6 +78,20 @@ const tf = (v) =>
   v === true || v === "1" || v === 1 || String(v).toUpperCase() === "TRUE"
     ? "TRUE"
     : "FALSE";
+
+// Extract src if user pasted a full <iframe ...>, otherwise return the value
+const extractEmbedSrc = (raw) => {
+  if (!raw) return "";
+  const m = /<iframe[^>]*\s+src=["']([^"']+)["']/i.exec(raw);
+  return (m ? m[1] : raw).trim();
+};
+
+// Normalize to a clean Google Maps embed URL (keyed or keyless)
+const normalizeMapInput = (raw) => extractEmbedSrc(raw);
+
+// Validate we only accept Google Maps embed endpoints
+const isValidMapsEmbedUrl = (url) =>
+  /^https:\/\/www\.google\.com\/maps\/embed(?:\/v1\/|)\S+$/i.test(url);
 
 // turn any non-primitive into a readable string for preview
 const safeDisplay = (v) => {
@@ -84,12 +105,16 @@ const safeDisplay = (v) => {
   }
 };
 
+// convert HTML to plain text to validate required-ness
+const stripHtml = (html = "") =>
+  html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+
 // normalize incoming Firestore data to the shape the form expects
 const normalizeLoadedData = (data, categoryName) => {
-  // gallery may be:
-  // - string (leave as is)
-  // - array of strings (join)
-  // - array of objects with { placePhotoName, ... } (join names)
+  // gallery may be: string / array of strings / array of objects
   let galleryStr = "";
   let galleryObjects = [];
   if (Array.isArray(data.gallery)) {
@@ -108,7 +133,6 @@ const normalizeLoadedData = (data, categoryName) => {
     galleryStr = data.gallery;
   }
 
-  // prefer mapEmbed when present
   const mapurl = data.mapurl || data.mapEmbed || "";
 
   return {
@@ -131,6 +155,127 @@ const normalizeLoadedData = (data, categoryName) => {
 
 const emptyGalleryRow = { placePhotoName: "", widthPx: "", heightPx: "" };
 
+/* --------------------------- Map Preview UI --------------------------- */
+
+const MapPreview = ({ url }) => {
+  if (!url || !isValidMapsEmbedUrl(url)) return null;
+  return (
+    <Box
+      sx={{
+        mt: 1,
+        width: "100%",
+        height: 240,
+        borderRadius: 2,
+        overflow: "hidden",
+        border: "1px solid",
+        borderColor: "divider",
+      }}
+    >
+      <iframe
+        src={url}
+        width="100%"
+        height="100%"
+        style={{ border: 0 }}
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        title="Map preview"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+      />
+    </Box>
+  );
+};
+
+/* ------------------------------ TipTap UI ------------------------------ */
+
+function RichEditor({ value, onChange, error }) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        bulletList: { keepMarks: true, keepAttributes: false },
+        orderedList: { keepMarks: true, keepAttributes: false },
+      }),
+      Link.configure({ openOnClick: true, autolink: true }),
+    ],
+    content: value || "",
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+  });
+
+  return (
+    <Box
+      sx={{
+        border: "1px solid",
+        borderColor: error ? "error.main" : "divider",
+        borderRadius: 1,
+        overflow: "hidden",
+      }}
+    >
+      {/* Minimal toolbar */}
+      <Box
+        sx={{
+          display: "flex",
+          gap: 1,
+          p: 1,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          flexWrap: "wrap",
+        }}
+      >
+        {[
+          ["Bold", () => editor?.chain().focus().toggleBold().run()],
+          ["Italic", () => editor?.chain().focus().toggleItalic().run()],
+          [
+            "H1",
+            () => editor?.chain().focus().toggleHeading({ level: 1 }).run(),
+          ],
+          [
+            "H2",
+            () => editor?.chain().focus().toggleHeading({ level: 2 }).run(),
+          ],
+          ["Bullet", () => editor?.chain().focus().toggleBulletList().run()],
+          ["Number", () => editor?.chain().focus().toggleOrderedList().run()],
+          ["Quote", () => editor?.chain().focus().toggleBlockquote().run()],
+          [
+            "Link",
+            () => {
+              const url = prompt("Enter URL");
+              if (url)
+                editor
+                  ?.chain()
+                  .focus()
+                  .extendMarkRange("link")
+                  .setLink({ href: url })
+                  .run();
+            },
+          ],
+          [
+            "Clear",
+            () => editor?.chain().focus().clearNodes().unsetAllMarks().run(),
+          ],
+        ].map(([label, fn]) => (
+          <Button
+            key={label}
+            size="small"
+            variant="outlined"
+            color="secondary"
+            onClick={fn}
+          >
+            {label}
+          </Button>
+        ))}
+      </Box>
+
+      <EditorContent
+        editor={editor}
+        className="tiptap"
+        style={{ minHeight: 180, padding: 12 }}
+      />
+    </Box>
+  );
+}
+
+/* ------------------------------- Component ------------------------------ */
+
 const ListingForm = () => {
   const { categoryId, listingId } = useParams();
   const navigate = useNavigate();
@@ -145,7 +290,6 @@ const ListingForm = () => {
 
   useEffect(() => {
     if (!listingId) {
-      // For new listings, prefill the category name
       setFields((prev) => ({ ...prev, category: categoryName }));
       setGalleryRows([emptyGalleryRow]);
       return;
@@ -168,6 +312,18 @@ const ListingForm = () => {
   }, [listingId, categoryId, categoryName]);
 
   const handleChange = (key, value) => {
+    if (key === "mapurl") {
+      const cleaned = normalizeMapInput(value);
+      setFields((prev) => ({ ...prev, mapurl: cleaned }));
+      setErrors((prev) => ({
+        ...prev,
+        mapurl:
+          cleaned === "" || isValidMapsEmbedUrl(cleaned)
+            ? undefined
+            : prev.mapurl || "Invalid Google Maps embed URL",
+      }));
+      return;
+    }
     setFields((prev) => ({ ...prev, [key]: value ?? "" }));
   };
 
@@ -188,19 +344,20 @@ const ListingForm = () => {
   const validate = () => {
     const e = {};
     if (!fields.name.trim()) e.name = "Required";
-    if (!fields.description.trim()) e.description = "Required";
+    if (!stripHtml(fields.description)) e.description = "Required";
     if (!fields.category) e.category = "Required";
+    if (fields.mapurl && !isValidMapsEmbedUrl(fields.mapurl)) {
+      e.mapurl =
+        "Please paste a Google Maps Embed URL (either /maps/embed?pb=... or /maps/embed/v1/...)";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
-    // (you can add more validation as needed)
   };
 
   const handleSubmit = async () => {
     if (!validate()) return;
 
-    // Build gallery payload:
-    // If galleryRows contain at least one row with placePhotoName, use object array.
-    // Else fall back to CSV string from `fields.gallery`.
+    // Build gallery payload
     const rowsWithName = galleryRows.filter(
       (r) => (r.placePhotoName || "").trim() !== ""
     );
@@ -208,7 +365,6 @@ const ListingForm = () => {
     if (rowsWithName.length) {
       galleryPayload = rowsWithName.map((r) => ({
         placePhotoName: r.placePhotoName.trim(),
-        // store numbers if valid, else omit
         ...(r.widthPx !== ""
           ? { widthPx: Number(r.widthPx) || r.widthPx }
           : {}),
@@ -228,16 +384,15 @@ const ListingForm = () => {
     const payload = {
       ...fields,
       gallery: galleryPayload,
-      categoryId, // machine-safe category id
-      category: categoryName, // human-readable label
+      categoryId,
+      category: categoryName,
       rating:
         fields.rating === "" || isNaN(parseFloat(fields.rating))
           ? ""
           : Math.max(0, Math.min(5, parseFloat(fields.rating))),
       featured: tf(fields.featured),
       eyes: tf(fields.eyes),
-      // mirror mapurl to mapEmbed for DetailPage compatibility
-      mapEmbed: fields.mapurl || "",
+      mapEmbed: fields.mapurl || "", // mirror for DetailPage
     };
 
     if (listingId) {
@@ -291,22 +446,24 @@ const ListingForm = () => {
               />
             </Grid>
 
-            {/* Description */}
-            <Grid item xs={12} display={"contents"}>
-              <TextField
-                label="Description"
-                fullWidth
-                required
-                multiline
-                rows={4}
+            {/* Description (TipTap) */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Description <span style={{ color: "#d32f2f" }}>*</span>
+              </Typography>
+              <RichEditor
                 value={fields.description}
+                onChange={(val) => handleChange("description", val)}
                 error={Boolean(errors.description)}
-                helperText={errors.description}
-                onChange={(e) => handleChange("description", e.target.value)}
               />
+              {errors.description && (
+                <Typography variant="caption" color="error">
+                  {errors.description}
+                </Typography>
+              )}
             </Grid>
 
-            {/* Category (read-only, resolved from URL) */}
+            {/* Category (read-only) */}
             <Grid item xs={12} display={"contents"}>
               <TextField
                 label="Category"
@@ -378,7 +535,7 @@ const ListingForm = () => {
               />
             </Grid>
 
-            {/* Advanced Gallery Editor (array of objects) */}
+            {/* Advanced Gallery Editor */}
             <Grid item xs={12}>
               <Typography variant="subtitle1" sx={{ mb: 1 }}>
                 Advanced Gallery Editor
@@ -388,9 +545,8 @@ const ListingForm = () => {
                 color="text.secondary"
                 sx={{ display: "block", mb: 1 }}
               >
-                Use this to save gallery as objects (placePhotoName, widthPx,
-                heightPx). If you fill at least one row here, the CSV above will
-                be ignored on save.
+                Fill at least one row to save as objects; otherwise the CSV will
+                be used.
               </Typography>
 
               {galleryRows.map((row, idx) => (
@@ -402,7 +558,7 @@ const ListingForm = () => {
                   sx={{ mb: 1.5 }}
                 >
                   <TextField
-                    label="placePhotoName"
+                    label="Image URL (https://...)"
                     fullWidth
                     value={row.placePhotoName}
                     onChange={(e) =>
@@ -455,10 +611,17 @@ const ListingForm = () => {
             <Grid item xs={12} display={"contents"}>
               <TextField
                 label="Map URL"
+                placeholder="Paste /maps/embed?pb=... or /maps/embed/v1/place?... or the full <iframe ...> code"
                 fullWidth
                 value={fields.mapurl}
+                error={Boolean(errors.mapurl)}
+                helperText={
+                  errors.mapurl ||
+                  "Tip: Paste Google Maps → Share → Embed → copy iframe. We'll extract the src automatically."
+                }
                 onChange={(e) => handleChange("mapurl", e.target.value)}
               />
+              <MapPreview url={fields.mapurl} />
             </Grid>
 
             {/* Rating */}
