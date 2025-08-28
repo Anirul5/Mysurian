@@ -12,7 +12,7 @@ import FacebookIcon from "@mui/icons-material/Facebook";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import TwitterIcon from "@mui/icons-material/Twitter";
 import ContactMailIcon from "@mui/icons-material/ContactMail";
-import ContactModal from "./ContactModal"; // <-- import your modal
+import ContactModal from "./ContactModal";
 
 export default function Footer() {
   const [open, setOpen] = useState(false);
@@ -55,7 +55,7 @@ export default function Footer() {
                 Categories
               </Link>
               <Link
-                href={`/`}
+                href={`/careers`}
                 underline="none"
                 sx={{ display: "block", color: "#ccc", mb: 0.5 }}
               >
@@ -79,7 +79,7 @@ export default function Footer() {
               </IconButton>
               <IconButton
                 color="inherit"
-                href="http://instagram.com.mysurian.in/"
+                href="http://instagram.com/mysurian.in/"
                 target="_blank"
               >
                 <InstagramIcon />

@@ -22,6 +22,7 @@ import CategoriesListPage from "./pages/CategoriesListPage";
 import PrivateRoute from "./components/PrivateRoute";
 import { HomeDataProvider } from "./context/HomeDataContext";
 import FavoritesPage from "./pages/FavoritesPage";
+import Careers from "./pages/Careers";
 
 function App() {
   return (
@@ -86,6 +87,7 @@ function App() {
               <Route path="/:collectionName/:id" element={<DetailPage />} />
               <Route path="/search" element={<SearchResults />} />
               <Route path="/favorites" element={<FavoritesPage />} />
+              <Route path="/careers" element={<Careers />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
