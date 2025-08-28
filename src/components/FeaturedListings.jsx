@@ -34,7 +34,7 @@ export default function FeaturedListings() {
     )
   );
 
-  const handleClick = (item) => navigate(`/${item.categoryID}/${item.id}`);
+  const handleClick = (item) => navigate(`/${item.categoryId}/${item.id}`);
 
   return (
     <div>

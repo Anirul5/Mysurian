@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   doc,
   getDoc,
-  increment,
   updateDoc,
   setDoc,
   arrayUnion,
@@ -18,7 +17,6 @@ import {
   Button,
   Rating,
   Card,
-  CardMedia,
   IconButton,
   Skeleton,
   Breadcrumbs,
@@ -137,6 +135,7 @@ export default function DetailPage() {
 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -149,11 +148,15 @@ export default function DetailPage() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        const userRef = doc(db, "users", currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const favs = userSnap.data().favorites || [];
-          setIsFavorite(favs.some((fav) => fav.id === id));
+        try {
+          const userRef = doc(db, "users", currentUser.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            const favs = userSnap.data().favorites || [];
+            setIsFavorite(favs.some((fav) => fav.id === id));
+          }
+        } catch (e) {
+          // ignore
         }
       } else {
         setUser(null);
@@ -199,56 +202,78 @@ export default function DetailPage() {
     }
   };
 
+  // Build doc ref safely
+  const docRef = useMemo(() => {
+    const collectionName = decodeURIComponent(category || "");
+    return collectionName && id ? doc(db, collectionName, id) : null;
+  }, [category, id]);
+
   useEffect(() => {
+    let active = true;
+
     const fetchItem = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        setLoading(true);
-        const collectionName = decodeURIComponent(category);
-        const docRef = doc(db, collectionName, id);
-        const snapshot = await getDoc(docRef);
-
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-
-          // Unique per-listing view counter (session-scoped)
-          const viewKey = `viewed-${collectionName}-${id}`;
-          let addedViews = 0;
-          if (!sessionStorage.getItem(viewKey)) {
-            sessionStorage.setItem(viewKey, "true");
-            await updateDoc(docRef, { views: increment(1) });
-            addedViews = 1;
+        if (!docRef) {
+          if (active) {
+            setItem(null);
+            setLoading(false);
           }
-
-          setItem({
-            id: snapshot.id,
-            category: collectionName,
-            ...data,
-            views: (data.views || 0) + addedViews,
-          });
-        } else {
-          setItem(null);
+          return;
         }
-      } catch (err) {
-        console.error("Error fetching item:", err);
-        setItem(null);
-      } finally {
+
+        const snap = await getDoc(docRef);
+        if (!active) return;
+
+        if (!snap.exists()) {
+          setItem(null);
+          setLoading(false);
+          return;
+        }
+
+        const data = snap.data();
+        const collectionName = decodeURIComponent(category);
+        const viewKey = `viewed-${collectionName}-${id}`;
+        const alreadyViewed = !!sessionStorage.getItem(viewKey);
+
+        const baseViews = typeof data.views === "number" ? data.views : 0;
+        const viewsNow = baseViews + (alreadyViewed ? 0 : 1);
+
+        // 1) Show the item immediately (never mark as not found due to counter failures)
+        setItem({
+          id: snap.id,
+          category: collectionName,
+          ...data,
+          views: viewsNow,
+        });
+        setLoading(false);
+
+        // 2) Fire-and-forget: mark session viewed & bump searchcount (+1) — allowed by rules.
+        if (!alreadyViewed) {
+          sessionStorage.setItem(viewKey, "true");
+          try {
+            const currentSearch =
+              typeof data.searchcount === "number" ? data.searchcount : 0;
+            await updateDoc(docRef, { searchcount: currentSearch + 1 });
+          } catch (e) {
+            // Silently ignore; never break page
+          }
+        }
+      } catch (e) {
+        if (!active) return;
+        setError(e);
         setLoading(false);
       }
     };
+
     fetchItem();
-  }, [category, id]);
+    return () => {
+      active = false;
+    };
+  }, [docRef, category, id]);
 
-  const handleShare = () => {
-    if (navigator.share && item) {
-      navigator.share({
-        title: item.name,
-        text: `Check out ${item.name} in Mysuru`,
-        url: window.location.href,
-      });
-    }
-  };
-
-  /* ---- Parse gallery from your schema ---- */
+  /* ---- Gallery helpers ---- */
   const getGalleryUrls = (gallery) => {
     if (!gallery) return [];
     if (Array.isArray(gallery)) {
@@ -263,17 +288,10 @@ export default function DetailPage() {
     return [];
   };
 
-  // Resolve gallery item to a usable image URL.
-  // Supports plain strings or objects with url/src/placePhotoName.
-  // If it's already a URL, we use it; otherwise we skip (no API calls).
-  const resolveGallerySrc = (item) => {
-    if (!item) return "";
-    if (typeof item === "string") return item.trim();
-
-    const val = item.url || item.src || item.placePhotoName || "";
-    if (!val) return "";
-
-    // only accept real URLs (no Places photoName → we avoid API calls)
+  const resolveGallerySrc = (g) => {
+    if (!g) return "";
+    if (typeof g === "string") return g.trim();
+    const val = g.url || g.src || g.placePhotoName || "";
     return /^(https?:)?\/\//i.test(val) ? val : "";
   };
 
@@ -286,257 +304,276 @@ export default function DetailPage() {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 
+  // ---- Render states ----
+  if (loading) {
+    return (
+      <>
+        <Helmet>
+          <title>Mysurian</title>
+          <meta name="description" content="Loading item details..." />
+        </Helmet>
+        <Container sx={{ mt: 4 }}>
+          <Typography>Loading…</Typography>
+        </Container>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container sx={{ mt: 4 }}>
+        <Typography color="error">
+          {error.message || "Something went wrong"}
+        </Typography>
+      </Container>
+    );
+  }
+
+  if (!item) {
+    return (
+      <Container sx={{ mt: 4 }}>
+        <Typography>Item not found</Typography>
+      </Container>
+    );
+  }
+
   return (
     <>
       <Helmet>
         <title>
-          {loading
-            ? "Mysurian"
-            : item?.name
+          {item?.name
             ? `${item.name} | ${formattedCategory} in Mysuru | Mysurian`
             : "Mysurian"}
         </title>
         <meta
           name="description"
           content={
-            loading
-              ? "Loading item details..."
-              : item?.description ||
-                `Details about ${item?.name || "this listing"}`
+            item?.description || `Details about ${item?.name || "this listing"}`
           }
         />
       </Helmet>
 
-      {loading ? (
-        <Container sx={{ mt: 4 }}>
-          <Typography>Loading...</Typography>
-        </Container>
-      ) : !item ? (
-        <Container sx={{ mt: 4 }}>
-          <Typography>Item not found</Typography>
-        </Container>
-      ) : (
-        <Container sx={{ mt: 4 }}>
-          {/* Breadcrumbs / Back */}
-          <Box mb={0}>
-            <Breadcrumbs aria-label="breadcrumb">
-              <Button
-                startIcon={<ArrowBackIcon />}
-                color="secondary"
-                onClick={() => navigate(-1)}
-                sx={{ mb: 2, display: { xs: "none", sm: "flex" } }}
-              >
-                Back
-              </Button>
-            </Breadcrumbs>
-          </Box>
-
-          {/* Cover Image */}
-          <Box sx={{ position: "relative" }}>
-            <CoverImage src={coverUrl} alt={item?.name} />
-            <Box
-              sx={{
-                position: "absolute",
-                bottom: 16,
-                left: 16,
-                color: "#fff",
-                textShadow: "0 2px 4px rgba(0,0,0,0.6)",
-              }}
+      <Container sx={{ mt: 4 }}>
+        {/* Breadcrumbs / Back */}
+        <Box mb={0}>
+          <Breadcrumbs aria-label="breadcrumb">
+            <Button
+              startIcon={<ArrowBackIcon />}
+              color="secondary"
+              onClick={() => navigate(-1)}
+              sx={{ mb: 2, display: { xs: "none", sm: "flex" } }}
             >
-              <Typography variant="h5" fontWeight="bold">
-                {item.name}
-              </Typography>
-              {typeof item?.rating === "number" && (
-                <Box display="flex" alignItems="center" mt={0.5}>
-                  <Rating
-                    value={item.rating}
-                    precision={0.1}
-                    readOnly
-                    sx={{ color: "#fff" }}
-                  />
-                  <Typography variant="body2" sx={{ ml: 1 }}>
-                    {item.rating} / 5
-                    {typeof item.userRatingCount === "number" &&
-                      ` · ${item.userRatingCount} reviews`}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-            <Box sx={{ position: "absolute", top: 8, right: 8 }}>
-              <IconButton
-                component="span"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleShare();
-                }}
-                sx={{ color: "#fff" }}
-              >
-                <ShareIcon />
-              </IconButton>
-              <IconButton
-                onClick={toggleFavorite}
-                sx={{ color: isFavorite ? "red" : "#fff" }}
-              >
-                {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-              </IconButton>
-            </Box>
-          </Box>
-          {/* Gallery */}
-          {item.gallery.length > 0 && (
-            <>
-              <Grid container spacing={2} mb={3}>
-                {console.log(item.galleryItems)}
-                {galleryItems.map((img, index) => (
-                  <Grid item xs={12} sm={6} md={4} key={index}>
-                    <Card
-                      onClick={() => {
-                        setPhotoIndex(index);
-                        setLightboxOpen(true);
-                      }}
-                      sx={{
-                        cursor: "pointer",
-                        borderRadius: 2,
-                        overflow: "hidden",
-                        "&:hover img": { transform: "scale(1.05)" },
-                      }}
-                    >
-                      <ThumbImage
-                        src={img || placeholderImage}
-                        alt={`${item.name} image ${index + 1}`}
-                      />
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
+              Back
+            </Button>
+          </Breadcrumbs>
+        </Box>
 
-              {lightboxOpen && (
-                <Lightbox
-                  mainSrc={galleryItems[photoIndex]}
-                  nextSrc={galleryItems[(photoIndex + 1) % galleryItems.length]}
-                  prevSrc={
-                    galleryItems[
-                      (photoIndex + galleryItems.length - 1) %
-                        galleryItems.length
-                    ]
-                  }
-                  onCloseRequest={() => setLightboxOpen(false)}
-                  onMovePrevRequest={() =>
-                    setPhotoIndex(
-                      (photoIndex + galleryItems.length - 1) %
-                        galleryItems.length
-                    )
-                  }
-                  onMoveNextRequest={() =>
-                    setPhotoIndex((photoIndex + 1) % galleryItems.length)
-                  }
+        {/* Cover Image */}
+        <Box sx={{ position: "relative" }}>
+          <CoverImage src={coverUrl} alt={item?.name} />
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: 16,
+              left: 16,
+              color: "#fff",
+              textShadow: "0 2px 4px rgba(0,0,0,0.6)",
+            }}
+          >
+            <Typography variant="h5" fontWeight="bold">
+              {item.name}
+            </Typography>
+            {typeof item?.rating === "number" && (
+              <Box display="flex" alignItems="center" mt={0.5}>
+                <Rating
+                  value={item.rating}
+                  precision={0.1}
+                  readOnly
+                  sx={{ color: "#fff" }}
                 />
-              )}
-            </>
-          )}
-
-          {/* Description */}
-          {/* Description (rich blog style) */}
-          {item?.description && (
-            <Box
-              sx={{
-                mt: 3,
-                mb: 4,
-                p: { xs: 2, sm: 3 },
-                backgroundColor: "#fafafa",
-                borderRadius: 2,
-                border: "1px solid",
-                borderColor: "divider",
-                // blog styles
-                "& h1,& h2,& h3": { fontWeight: 700, mt: 2.5, mb: 1 },
-                "& h1": { fontSize: "1.6rem" },
-                "& h2": { fontSize: "1.35rem" },
-                "& h3": { fontSize: "1.15rem" },
-                "& p": { lineHeight: 1.8, mb: 2 },
-                "& ul, & ol": { pl: 3, mb: 2 },
-                "& blockquote": {
-                  borderLeft: "4px solid #e0e0e0",
-                  pl: 2,
-                  color: "text.secondary",
-                  fontStyle: "italic",
-                  my: 2,
-                },
+                <Typography variant="body2" sx={{ ml: 1 }}>
+                  {item.rating} / 5
+                  {typeof item.userRatingCount === "number" &&
+                    ` · ${item.userRatingCount} reviews`}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+          <Box sx={{ position: "absolute", top: 8, right: 8 }}>
+            <IconButton
+              component="span"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (navigator.share && item) {
+                  navigator.share({
+                    title: item.name,
+                    text: `Check out ${item.name} in Mysuru`,
+                    url: window.location.href,
+                  });
+                }
               }}
+              sx={{ color: "#fff" }}
             >
-              <div
-                // sanitize any HTML from Firestore
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(item.description),
-                }}
+              <ShareIcon />
+            </IconButton>
+            <IconButton
+              onClick={toggleFavorite}
+              sx={{ color: isFavorite ? "red" : "#fff" }}
+            >
+              {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+            </IconButton>
+          </Box>
+        </Box>
+
+        {/* Gallery (guarded) */}
+        {galleryItems.length > 0 && (
+          <>
+            <Grid container spacing={2} mb={3}>
+              {galleryItems.map((img, index) => (
+                <Grid item xs={12} sm={6} md={4} key={index}>
+                  <Card
+                    onClick={() => {
+                      setPhotoIndex(index);
+                      setLightboxOpen(true);
+                    }}
+                    sx={{
+                      cursor: "pointer",
+                      borderRadius: 2,
+                      overflow: "hidden",
+                      "&:hover img": { transform: "scale(1.05)" },
+                    }}
+                  >
+                    <ThumbImage
+                      src={img || placeholderImage}
+                      alt={`${item.name} image ${index + 1}`}
+                    />
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+
+            {lightboxOpen && (
+              <Lightbox
+                mainSrc={galleryItems[photoIndex]}
+                nextSrc={galleryItems[(photoIndex + 1) % galleryItems.length]}
+                prevSrc={
+                  galleryItems[
+                    (photoIndex + galleryItems.length - 1) % galleryItems.length
+                  ]
+                }
+                onCloseRequest={() => setLightboxOpen(false)}
+                onMovePrevRequest={() =>
+                  setPhotoIndex(
+                    (photoIndex + galleryItems.length - 1) % galleryItems.length
+                  )
+                }
+                onMoveNextRequest={() =>
+                  setPhotoIndex((photoIndex + 1) % galleryItems.length)
+                }
               />
-            </Box>
-          )}
-
-          {/* Contact Buttons */}
-          <Box display="flex" gap={2} flexWrap="wrap" mb={3}>
-            {item?.contact && (
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<CallIcon />}
-                href={`tel:${String(item.contact).replace(/\s+/g, "")}`}
-              >
-                Call Now
-              </Button>
             )}
-            {item?.whatsapp && (
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<WhatsAppIcon />}
-                href={`https://wa.me/${item.whatsapp}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                WhatsApp
-              </Button>
-            )}
-            {item?.website && (
-              <Button
-                variant="contained"
-                color="info"
-                startIcon={<LanguageIcon />}
-                href={item.website}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Visit Website
-              </Button>
-            )}
-          </Box>
+          </>
+        )}
 
-          {/* Address */}
-          {item?.address && (
-            <>
-              <Typography variant="h6" gutterBottom>
-                Address
-              </Typography>
-              <Typography variant="body2" paragraph>
-                {item.address}
-              </Typography>
-            </>
+        {/* Description */}
+        {item?.description && (
+          <Box
+            sx={{
+              mt: 3,
+              mb: 4,
+              p: { xs: 2, sm: 3 },
+              backgroundColor: "#fafafa",
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor: "divider",
+              "& h1,& h2,& h3": { fontWeight: 700, mt: 2.5, mb: 1 },
+              "& h1": { fontSize: "1.6rem" },
+              "& h2": { fontSize: "1.35rem" },
+              "& h3": { fontSize: "1.15rem" },
+              "& p": { lineHeight: 1.8, mb: 2 },
+              "& ul, & ol": { pl: 3, mb: 2 },
+              "& blockquote": {
+                borderLeft: "4px solid #e0e0e0",
+                pl: 2,
+                color: "text.secondary",
+                fontStyle: "italic",
+                my: 2,
+              },
+            }}
+          >
+            <div
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(item.description),
+              }}
+            />
+          </Box>
+        )}
+
+        {/* Contact Buttons */}
+        <Box display="flex" gap={2} flexWrap="wrap" mb={3}>
+          {item?.contact && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<CallIcon />}
+              href={`tel:${String(item.contact).replace(/\s+/g, "")}`}
+            >
+              Call Now
+            </Button>
           )}
-
-          {/* Map Embed (supports both mapEmbed + legacy mapurl) */}
-          {(item?.mapEmbed || item?.mapurl) && (
-            <MapEmbed value={item.mapEmbed || item.mapurl} />
+          {item?.whatsapp && (
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<WhatsAppIcon />}
+              href={`https://wa.me/${item.whatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              WhatsApp
+            </Button>
           )}
+          {item?.website && (
+            <Button
+              variant="contained"
+              color="info"
+              startIcon={<LanguageIcon />}
+              href={item.website}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Visit Website
+            </Button>
+          )}
+        </Box>
 
-          {/* User Comments */}
-          <Box mb={4}>
-            <Reviews categoryId={category} itemId={id} currentUser={user} />
-          </Box>
+        {/* Address */}
+        {item?.address && (
+          <>
+            <Typography variant="h6" gutterBottom>
+              Address
+            </Typography>
+            <Typography variant="body2" paragraph>
+              {item.address}
+            </Typography>
+          </>
+        )}
 
-          {/* Nearby Attractions */}
-          <Box mb={4}>
-            <NearbyAttractions currentItem={item} />
-          </Box>
-        </Container>
-      )}
+        {/* Map Embed (supports both mapEmbed + legacy mapurl) */}
+        {(item?.mapEmbed || item?.mapurl) && (
+          <MapEmbed value={item.mapEmbed || item.mapurl} />
+        )}
+
+        {/* User Comments */}
+        <Box mb={4}>
+          <Reviews categoryId={category} itemId={id} currentUser={user} />
+        </Box>
+
+        {/* Nearby Attractions */}
+        <Box mb={4}>
+          <NearbyAttractions currentItem={item} />
+        </Box>
+      </Container>
     </>
   );
 }

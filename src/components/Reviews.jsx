@@ -10,18 +10,20 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  Chip,
 } from "@mui/material";
 import { Edit, Delete } from "@mui/icons-material";
 import {
   collection,
   addDoc,
+  onSnapshot,
   query,
   orderBy,
   doc,
   updateDoc,
   deleteDoc,
-  onSnapshot,
 } from "firebase/firestore";
+import { getAuth, onIdTokenChanged } from "firebase/auth";
 import { db } from "../firebaseConfig";
 import { loginWithGoogle } from "../firebase/auth";
 
@@ -32,283 +34,263 @@ export default function Reviews({ categoryId, itemId, currentUser }) {
   const [editingComment, setEditingComment] = useState("");
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogComment, setDialogComment] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // === ADMIN DETECTION (custom claims) + DEBUG LOG ===
+  useEffect(() => {
+    const auth = getAuth();
+    const unsub = onIdTokenChanged(auth, async (user) => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      try {
+        // Force refresh to ensure the latest custom claims are present
+        const res = await user.getIdTokenResult(true);
+        console.log("Custom claims (debug):", res.claims); // <-- should include { admin: true } for admins
+        setIsAdmin(!!res.claims?.admin);
+      } catch (e) {
+        console.error("Failed to read custom claims", e);
+        setIsAdmin(false);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Firestore collection path: categories/{categoryId}/items/{itemId}/reviews
+  const reviewsCol = collection(
+    db,
+    "categories",
+    categoryId,
+    "items",
+    itemId,
+    "reviews"
+  );
 
   useEffect(() => {
-    if (!categoryId || !itemId) return;
+    const q = query(reviewsCol, orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      const list = [];
+      snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
 
-    const q = query(
-      collection(db, "categories", categoryId, "items", itemId, "reviews"),
-      orderBy("date", "desc")
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      let fetched = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
+      // Keep your rule: show current user's review first
       if (currentUser) {
-        const userReview = fetched.find((r) => r.uid === currentUser.uid);
-        const others = fetched.filter((r) => r.uid !== currentUser.uid);
-        fetched = userReview ? [userReview, ...others] : others;
+        const mine = list.filter((r) => r.uid === currentUser.uid);
+        const others = list.filter((r) => r.uid !== currentUser.uid);
+        setReviews([...mine, ...others]);
+      } else {
+        setReviews(list);
       }
-
-      setReviews(fetched);
     });
-
-    return () => unsubscribe();
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId, itemId, currentUser]);
 
-  const handleAddReview = async () => {
+  const handlePostOrUpdate = async () => {
     let user = currentUser;
     if (!user) {
       try {
-        user = await loginWithGoogle();
+        user = await loginWithGoogle?.();
       } catch (err) {
         console.error("Login required", err);
         return;
       }
     }
-
     if (!newComment.trim()) return;
 
-    const existing = reviews.find((r) => r.uid === user.uid);
+    const myExisting = reviews.find((r) => r.uid === user.uid);
 
-    if (existing) {
-      const reviewRef = doc(
+    try {
+      if (myExisting) {
+        // Only owners can edit; admins do not edit (by design)
+        const ref = doc(
+          db,
+          "categories",
+          categoryId,
+          "items",
+          itemId,
+          "reviews",
+          myExisting.id
+        );
+        await updateDoc(ref, {
+          comment: newComment.trim(),
+          updatedAt: Date.now(),
+        });
+      } else {
+        await addDoc(reviewsCol, {
+          uid: user.uid,
+          authorName: user.displayName || "Anonymous",
+          authorPhoto: user.photoURL || "",
+          comment: newComment.trim(),
+          createdAt: Date.now(),
+        });
+      }
+      setNewComment("");
+      setEditingId(null);
+      setEditingComment("");
+    } catch (e) {
+      console.error("Failed to post/update review", e);
+    }
+  };
+
+  const handleEdit = (r) => {
+    setEditingId(r.id);
+    setNewComment(r.comment || "");
+    setEditingComment(r.comment || "");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setNewComment("");
+    setEditingComment("");
+  };
+
+  const handleDelete = async (reviewId) => {
+    try {
+      const ref = doc(
         db,
         "categories",
         categoryId,
         "items",
         itemId,
         "reviews",
-        existing.id
+        reviewId
       );
-      await updateDoc(reviewRef, {
-        comment: newComment,
-        date: new Date(),
-      });
-    } else {
-      await addDoc(
-        collection(db, "categories", categoryId, "items", itemId, "reviews"),
-        {
-          comment: newComment,
-          user: user.displayName || "Anonymous",
-          uid: user.uid,
-          date: new Date(),
-        }
-      );
+      await deleteDoc(ref);
+    } catch (e) {
+      console.error("Delete failed:", e.code, e.message);
+      alert(`Delete failed: ${e.code || "unknown"} — ${e.message || ""}`);
     }
-
-    setNewComment("");
-  };
-
-  const handleEdit = (review) => {
-    setEditingId(review.id);
-    setEditingComment(review.comment);
-  };
-
-  const handleSaveEdit = async () => {
-    const reviewRef = doc(
-      db,
-      "categories",
-      categoryId,
-      "items",
-      itemId,
-      "reviews",
-      editingId
-    );
-    await updateDoc(reviewRef, {
-      comment: editingComment,
-      date: new Date(),
-    });
-    setEditingId(null);
-  };
-
-  const handleDelete = async (id) => {
-    const reviewRef = doc(
-      db,
-      "categories",
-      categoryId,
-      "items",
-      itemId,
-      "reviews",
-      id
-    );
-    await deleteDoc(reviewRef);
-  };
-
-  const openFullComment = (comment) => {
-    setDialogComment(comment);
-    setOpenDialog(true);
   };
 
   return (
-    <Box sx={{ mt: 4 }}>
+    <Box sx={{ mt: 3 }}>
       <Typography variant="h6" gutterBottom>
-        User Comments ({reviews.length})
+        Comments {isAdmin && <Chip label="ADMIN" size="small" sx={{ ml: 1 }} />}
       </Typography>
 
-      <Box
-        style={{ display: "flex", overflowX: "auto", gap: 2, paddingBottom: 2 }}
-      >
-        {reviews.map((r) => (
-          <Card
-            key={r.id}
-            style={{
-              minWidth: 250,
-              flexShrink: 0,
-              padding: 1,
-              border:
-                currentUser?.uid === r.uid
-                  ? "2px solid #1976d2"
-                  : "1px solid #ccc",
-            }}
-          >
-            <CardContent>
-              <Typography
-                variant="subtitle2"
-                style={{ fontSize: "0.875rem", fontWeight: 500 }}
+      {/* Write/Edit box */}
+      <Card variant="outlined" sx={{ mb: 2 }}>
+        <CardContent>
+          <Typography variant="subtitle1" gutterBottom>
+            {editingId ? "Update Your Comment" : "Write a Comment"}
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={2}
+            placeholder="Write your comment..."
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+          />
+          <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handlePostOrUpdate}
+            >
+              {editingId ? "Update" : "Post"}
+            </Button>
+            {editingId && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={handleCancelEdit}
               >
-                {r.user}
-              </Typography>
-              {editingId === r.id ? (
-                <>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={2}
-                    value={editingComment}
-                    onChange={(e) => setEditingComment(e.target.value)}
-                    style={{ marginTop: 8 }}
-                  />
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={handleSaveEdit}
-                    style={{ marginTop: 8 }}
-                  >
-                    Save
-                  </Button>
-                  <Button
-                    variant="text"
-                    onClick={() => setEditingId(null)}
-                    style={{ marginTop: 8 }}
-                  >
-                    Cancel
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Typography
-                    variant="body2"
-                    style={{
-                      fontSize: "0.9rem",
-                      marginTop: 8,
-                      maxWidth: 220,
-                      maxHeight: 48,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => openFullComment(r.comment)}
-                  >
-                    {r.comment}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    style={{ fontSize: "0.75rem", marginTop: 4 }}
-                  >
-                    {r.date?.toDate
-                      ? r.date.toDate().toLocaleString("en-US", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                          timeZone: "Asia/Kolkata",
-                        })
-                      : ""}
-                  </Typography>
-                  {currentUser?.uid === r.uid && (
-                    <Box style={{ display: "flex", gap: 1, marginTop: 8 }}>
+                Cancel
+              </Button>
+            )}
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Horizontal scroll list of reviews */}
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          overflowX: "auto",
+          py: 1,
+        }}
+      >
+        {reviews.map((r) => {
+          const isOwner = currentUser?.uid === r.uid;
+
+          return (
+            <Card
+              key={r.id}
+              variant="outlined"
+              sx={{ minWidth: 250, flex: "0 0 auto" }}
+            >
+              <CardContent>
+                <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
+                  {r.authorName || "Anonymous"}
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 0.5,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => {
+                    setDialogComment(r.comment || "");
+                    setOpenDialog(true);
+                  }}
+                >
+                  {r.comment}
+                </Typography>
+
+                <Box sx={{ mt: 1 }}>
+                  {isAdmin ? (
+                    // Admin: replace normal controls with a single red button
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      onClick={() => {
+                        if (window.confirm("Admin: Delete this comment?")) {
+                          handleDelete(r.id);
+                        }
+                      }}
+                    >
+                      ADMIN DELETE BUTTON
+                    </Button>
+                  ) : isOwner ? (
+                    // Owner (non-admin): edit + delete icons
+                    <Box sx={{ display: "flex", gap: 0.5 }}>
                       <IconButton
                         size="small"
                         onClick={() => handleEdit(r)}
-                        style={{ padding: 4 }}
+                        sx={{ p: 0.5 }}
+                        aria-label="Edit comment"
                       >
                         <Edit fontSize="small" />
                       </IconButton>
                       <IconButton
                         size="small"
                         color="error"
-                        onClick={() => handleDelete(r.id)}
-                        style={{ padding: 4 }}
+                        onClick={() => {
+                          if (window.confirm("Delete your comment?")) {
+                            handleDelete(r.id);
+                          }
+                        }}
+                        sx={{ p: 0.5 }}
+                        aria-label="Delete comment"
                       >
                         <Delete fontSize="small" />
                       </IconButton>
                     </Box>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </Box>
-
-      {/* Add/Edit form */}
-      <Box sx={{ mt: 3 }}>
-        {currentUser ? (
-          <>
-            <Typography variant="subtitle1">
-              {reviews.find((r) => r.uid === currentUser?.uid)
-                ? "Update Your Comment"
-                : "Write a Comment"}
-            </Typography>
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              placeholder="Write your comment..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              sx={{
-                mt: 1,
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "12px",
-                  backgroundColor: "#fafafa",
-                  "& fieldset": { borderColor: "#ddd" },
-                  "&:hover fieldset": { borderColor: "#bbb" },
-                  "&.Mui-focused fieldset": { borderColor: "transparent" },
-                  "&.Mui-focused": {
-                    backgroundColor: "#fff",
-                    boxShadow: "0 0 6px rgba(0,0,0,0.15)",
-                  },
-                },
-              }}
-            />
-            <Button
-              variant="contained"
-              color="secondary"
-              sx={{ mt: 1 }}
-              onClick={handleAddReview}
-            >
-              {reviews.find((r) => r.uid === currentUser?.uid)
-                ? "Update Comment"
-                : "Submit"}
-            </Button>
-          </>
-        ) : (
-          <Button
-            variant="contained"
-            color="secondary"
-            sx={{ mt: 1 }}
-            onClick={loginWithGoogle}
-          >
-            Login to write a comment
-          </Button>
-        )}
+                  ) : null}
+                </Box>
+              </CardContent>
+            </Card>
+          );
+        })}
       </Box>
 
       {/* Full comment dialog */}
