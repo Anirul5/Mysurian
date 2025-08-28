@@ -54,6 +54,13 @@ export default function Footer() {
               >
                 Categories
               </Link>
+              <Link
+                href={`/`}
+                underline="none"
+                sx={{ display: "block", color: "#ccc", mb: 0.5 }}
+              >
+                Careers
+              </Link>
             </Box>
           </Grid>
 
@@ -72,7 +79,7 @@ export default function Footer() {
               </IconButton>
               <IconButton
                 color="inherit"
-                href="https://instagram.com"
+                href="http://instagram.com.mysurian.in/"
                 target="_blank"
               >
                 <InstagramIcon />

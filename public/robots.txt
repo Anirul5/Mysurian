@@ -1,5 +1,3 @@
-# https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
-
-Sitemap: https://mysurian09.web.app/sitemap.xml
+Sitemap: https://mysurian.in/sitemap.xml

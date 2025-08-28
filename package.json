@@ -36,8 +36,9 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "generate-sitemap": "node generate-sitemap.js",
-    "deploy": "npm run generate-sitemap && firebase deploy"
+    "sitemap": "node scripts/generate-sitemap.mjs",
+    "deploy": "npm run sitemap && firebase deploy --only hosting",
+    "release": "npm run build && npm run sitemap && firebase deploy --only hosting"
   },
   "eslintConfig": {
     "extends": [
@@ -59,6 +60,7 @@
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
+    "firebase-admin": "^13.5.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.11"
   }
