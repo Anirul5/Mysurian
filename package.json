@@ -38,7 +38,8 @@
     "eject": "react-scripts eject",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "deploy": "npm run sitemap && firebase deploy --only hosting",
-    "release": "npm run build && npm run sitemap && firebase deploy --only hosting"
+    "release": "npm run build && npm run sitemap && firebase deploy --only hosting",
+    "releasesositemap": "npm run build && firebase deploy --only hosting"
   },
   "eslintConfig": {
     "extends": [

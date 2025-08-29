@@ -1,18 +1,69 @@
-rules_version='2'
-
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ----- Helpers -----
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && (request.auth.token.admin == true); }
+    function numberInRange(n, min, max) { return n is number && n >= min && n <= max; }
+    function onlyKeysChanged(allowed) {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly(allowed);
+    }
+
+    // ----- Categories -----
+    match /categories/{categoryId} {
+      allow read: if true;                          // public read
+      allow create, update, delete: if isAdmin();   // admin write
+    }
+
+    // ----- Listings -----
+    match /categories/{categoryId}/listings/{listingId} {
+      allow read: if true;                          // public read
+      allow create, update, delete: if isAdmin();   // admin write
+
+      // Anyone can increment searchcount by exactly +1 (and nothing else)
+      allow update: if onlyKeysChanged(['searchcount']) &&
+                    (request.resource.data.searchcount is number) &&
+                    (request.resource.data.searchcount ==
+                      (((resource.data.searchcount != null) ? resource.data.searchcount : 0) + 1));
+    }
+
+    // ----- Reviews (one per user; doc id == uid) -----
+    match /categories/{categoryId}/listings/{listingId}/reviews/{reviewId} {
+      allow read: if true; // public read
+
+      allow create: if isSignedIn()
+                    && reviewId == request.auth.uid
+                    && request.resource.data.uid == request.auth.uid
+                    && numberInRange(request.resource.data.rating, 0, 5);
+
+      allow update: if isSignedIn()
+                    && reviewId == request.auth.uid
+                    && request.resource.data.uid == resource.data.uid
+                    && numberInRange(request.resource.data.rating, 0, 5);
+
+      allow delete: if isAdmin() || (isSignedIn() && reviewId == request.auth.uid);
+    }
+
+    // ----- Users (keep private) -----
+    match /users/{userId} {
+      allow read: if isAdmin() || (isSignedIn() && userId == request.auth.uid);
+      allow create: if isSignedIn() && userId == request.auth.uid;
+      allow update: if isSignedIn()
+                    && userId == request.auth.uid
+                    && !request.resource.data.keys().hasAny(['admin','role','claims','customClaims']);
+      allow delete: if isAdmin();
+    }
+
+    // ----- Admin-only area (optional) -----
+    match /admin/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // ----- Catch-all: PUBLIC READ for any other collections/subcollections -----
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2025, 8, 31);
+      allow read: if true;               // public read everywhere else
+      allow create, update, delete: if false;  // no writes unless above rules allowed them
     }
   }
 }

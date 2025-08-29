@@ -151,12 +151,6 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://mysurian.in/education/_meta</loc>
-    <lastmod>2025-08-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://mysurian.in/emergency-contacts-police-ambulance-fire</loc>
     <lastmod>2025-08-28</lastmod>
     <changefreq>weekly</changefreq>
@@ -307,12 +301,6 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://mysurian.in/healthcare/_meta</loc>
-    <lastmod>2025-08-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://mysurian.in/hotels-and-stays</loc>
     <lastmod>2025-08-28</lastmod>
     <changefreq>weekly</changefreq>
@@ -451,12 +439,6 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://mysurian.in/libraries/_meta</loc>
-    <lastmod>2025-08-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://mysurian.in/movie-theaters</loc>
     <lastmod>2025-08-28</lastmod>
     <changefreq>weekly</changefreq>
@@ -589,12 +571,6 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://mysurian.in/parks/_meta</loc>
-    <lastmod>2025-08-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://mysurian.in/pet-services-vets-grooming</loc>
     <lastmod>2025-08-28</lastmod>
     <changefreq>weekly</changefreq>
@@ -722,12 +698,6 @@
   </url>
   <url>
     <loc>https://mysurian.in/playgrounds/ChIJydBjnR57rzsREgxdMqFUOdM</loc>
-    <lastmod>2025-08-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://mysurian.in/playgrounds/_meta</loc>
     <lastmod>2025-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -914,12 +884,6 @@
   </url>
   <url>
     <loc>https://mysurian.in/transportation/ChIJy56VXxNwrzsR06Ji4Ulz730</loc>
-    <lastmod>2025-08-28</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://mysurian.in/transportation/_meta</loc>
     <lastmod>2025-08-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
