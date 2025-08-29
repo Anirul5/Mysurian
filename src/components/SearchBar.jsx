@@ -162,31 +162,6 @@ function SearchBar({
 
   return (
     <div style={{ position: "relative" }} ref={dropdownRef}>
-      {/* <Stack
-        direction="row"
-        spacing={1}
-        mb={1}
-        flexWrap="wrap"
-        sx={{ display: { xs: "none", sm: "none", md: "block" } }}
-      >
-        {categories.map((cat) => (
-          <Chip
-            mb={1}
-            key={cat
-              .replaceAll("_", " ")
-              .split(" ")
-              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(" ")}
-            label={cat
-              .replaceAll("_", " ")
-              .split(" ")
-              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(" ")}
-            onClick={() => setSelectedCategory(cat)}
-            color={selectedCategory === cat ? "secondary" : "default"}
-          />
-        ))}
-      </Stack> */}
       <form onSubmit={handleSubmit}>
         <TextField
           fullWidth
@@ -197,10 +172,28 @@ function SearchBar({
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon color="secondary" />
+                <SearchIcon sx={{ color: "#f5b625" }} /> {/* gold accent */}
               </InputAdornment>
             ),
-            sx: { borderRadius: "50px", backgroundColor: "#fff" },
+            sx: {
+              borderRadius: "50px",
+              backgroundColor: "rgba(255,255,255,0.15)", // frosted white
+              backdropFilter: "blur(10px)", // glass blur
+              WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.25)", // faint border
+              color: "white", // text color
+              "& input": {
+                color: "white", // input text color
+                fontWeight: 500,
+                "::placeholder": {
+                  color: "rgba(255,255,255,0.8)", // lighter placeholder
+                  opacity: 1,
+                },
+              },
+              "& .MuiOutlinedInput-notchedOutline": {
+                border: "none", // remove default outline
+              },
+            },
           }}
         />
       </form>
@@ -215,7 +208,35 @@ function SearchBar({
             mt: 1,
             borderRadius: "16px",
             overflow: "hidden",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+            // 🔥 glassy look
+            bgcolor: "rgba(73, 72, 72, 0.73)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+            color: "white",
+            maxHeight: 500,
+            overflow: "auto",
+
+            // 👇 Custom scrollbar
+            "&::-webkit-scrollbar": {
+              width: "8px",
+            },
+            "&::-webkit-scrollbar-track": {
+              background: "transparent",
+            },
+            "&::-webkit-scrollbar-thumb": {
+              background: "rgba(255,255,255,0.25)",
+              borderRadius: "4px",
+              border: "1px solid rgba(255,255,255,0.3)",
+            },
+            "&::-webkit-scrollbar-thumb:hover": {
+              background: "rgba(255,255,255,0.4)",
+            },
+
+            // Firefox
+            scrollbarWidth: "thin",
+            scrollbarColor: "#f5b625 transparent",
           }}
         >
           <List disablePadding>
@@ -225,7 +246,9 @@ function SearchBar({
                 key={idx}
                 onClick={() => handleSelect(item)}
                 sx={{
-                  "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
+                  "&:hover": {
+                    backgroundColor: "rgba(255,255,255,0.15)", // subtle glass hover
+                  },
                   px: 2,
                   py: 1.5,
                 }}
@@ -237,6 +260,12 @@ function SearchBar({
                     .split(" ")
                     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                     .join(" ")}
+                  primaryTypographyProps={{
+                    sx: { color: "white", fontWeight: 600 },
+                  }}
+                  secondaryTypographyProps={{
+                    sx: { color: "rgba(255,255,255,0.7)", fontSize: "0.85rem" },
+                  }}
                 />
                 <Chip
                   label={item.category
@@ -244,7 +273,12 @@ function SearchBar({
                     .split(" ")
                     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                     .join(" ")}
-                  color={categoryColors[item.category] || "default"}
+                  sx={{
+                    bgcolor: "rgba(245,182,37,0.15)", // gold accent transparent
+                    color: "#f5b625",
+                    border: "1px solid rgba(245,182,37,0.4)",
+                    fontWeight: 600,
+                  }}
                   size="small"
                 />
               </ListItem>

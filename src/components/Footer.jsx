@@ -13,13 +13,14 @@ import InstagramIcon from "@mui/icons-material/Instagram";
 import TwitterIcon from "@mui/icons-material/Twitter";
 import ContactMailIcon from "@mui/icons-material/ContactMail";
 import ContactModal from "./ContactModal";
+import { XIcon } from "lucide-react";
 
 export default function Footer() {
   const [open, setOpen] = useState(false);
 
   return (
     <Box
-      sx={{ width: "100%", backgroundColor: "#2c2c2c", color: "#fff", mt: 2 }}
+      sx={{ width: "100%", backgroundColor: "#2c2c2c", color: "#fff", mt: 0 }}
     >
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Grid container spacing={4}>
@@ -86,10 +87,10 @@ export default function Footer() {
               </IconButton>
               <IconButton
                 color="inherit"
-                href="https://twitter.com"
+                href="https://x.com/mysurian_in"
                 target="_blank"
               >
-                <TwitterIcon />
+                <XIcon />
               </IconButton>
             </Box>
 

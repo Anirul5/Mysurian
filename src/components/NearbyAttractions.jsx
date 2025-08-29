@@ -114,17 +114,6 @@ export default function NearbyAttractions({ currentItem }) {
       </Typography>
 
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "60px",
-            height: "100%",
-            pointerEvents: "none",
-            background: "linear-gradient(to left, transparent, white)",
-          }}
-        />
         {/* Scroll wrapper with fade */}
         <Box sx={{ position: "relative", flex: 1, width: "80%" }}>
           <Box
@@ -194,19 +183,19 @@ export default function NearbyAttractions({ currentItem }) {
             ))}
           </Box>
           {/* Left fade (only show if scrolled > 0) */}
-          {/* {scrollLeft > 0 && (
+          {scrollLeft > 0 && (
             <Box
               sx={{
                 position: "absolute",
                 top: 0,
-                left: 0,
+                left: -1,
                 width: "60px",
                 height: "100%",
                 pointerEvents: "none",
                 background: "linear-gradient(to left, transparent, white)",
               }}
             />
-          )} */}
+          )}
 
           {/* Right fade (always visible if scrollable) */}
           {scrollLeft < scrollMax && (

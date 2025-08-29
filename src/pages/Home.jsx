@@ -1,17 +1,119 @@
-import React from "react";
-import { Box, Container, Typography, Button } from "@mui/material";
+import React, { useRef, useState, useEffect } from "react";
+import { Box, Container, Typography, Button, Stack } from "@mui/material";
 import SearchBar from "../components/SearchBar";
 import QuickCategories from "../components/QuickCategories";
 import FeaturedTopics from "../components/FeaturedTopics";
 import FeaturedListings from "../components/FeaturedListings";
 import EyesAreLookingAt from "../components/EyesAreLookingAt";
-import CallToAction from "../components/CallToAction";
 import { Helmet } from "react-helmet-async";
 import heroImage from "../assets/hero_mysuru.png";
 import { useNavigate } from "react-router-dom";
+import HeroHighlights from "../components/HeroHighlights";
 
 export default function Home() {
   const navigate = useNavigate();
+
+  // --- Horizontal Scroll with fade, arrows, dots ---
+  const HorizontalScroll = ({ children, bgColor = "#fff" }) => {
+    const containerRef = useRef(null);
+    const [scrollLeft, setScrollLeft] = useState(0);
+    const [scrollMax, setScrollMax] = useState(0);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
+
+    const handleScroll = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      setScrollLeft(el.scrollLeft);
+      setScrollMax(el.scrollWidth - el.clientWidth);
+      const page = Math.round(el.scrollLeft / el.clientWidth);
+      setCurrentPage(page);
+      setTotalPages(Math.max(1, Math.ceil(el.scrollWidth / el.clientWidth)));
+    };
+
+    useEffect(() => {
+      handleScroll();
+      const el = containerRef.current;
+      if (!el) return;
+      el.addEventListener("scroll", handleScroll);
+      window.addEventListener("resize", handleScroll);
+      return () => {
+        el.removeEventListener("scroll", handleScroll);
+        window.removeEventListener("resize", handleScroll);
+      };
+    }, []);
+
+    const scrollByPage = (dir) => {
+      const el = containerRef.current;
+      if (!el) return;
+      const width = el.clientWidth;
+      const newScroll = el.scrollLeft + dir * width;
+      el.scrollTo({ left: newScroll, behavior: "smooth" });
+    };
+
+    return (
+      <Box sx={{ position: "relative" }}>
+        <Box
+          ref={containerRef}
+          sx={{
+            display: "flex",
+            gap: 2,
+            overflowX: "auto",
+            scrollSnapType: "x mandatory",
+            px: { xs: 1, md: 0 },
+            pb: 1,
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
+        >
+          {children}
+
+          {/* Right fade */}
+          {scrollLeft < scrollMax && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: "60px",
+                height: "100%",
+                pointerEvents: "none",
+                background: `linear-gradient(to right, transparent, ${bgColor})`,
+              }}
+            />
+          )}
+        </Box>
+
+        {/* Dots */}
+        {totalPages > 1 && (
+          <Stack direction="row" justifyContent="center" mt={2}>
+            {Array.from({ length: totalPages - 1 }).map((_, index) => (
+              <Box
+                key={index}
+                onClick={() => {
+                  if (containerRef.current) {
+                    const scrollX = index * containerRef.current.clientWidth;
+                    containerRef.current.scrollTo({
+                      left: scrollX,
+                      behavior: "smooth",
+                    });
+                  }
+                }}
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  backgroundColor:
+                    index === currentPage ? "#f5b625" : "rgba(0,0,0,0.4)",
+                  mx: 0.5,
+                  cursor: "pointer",
+                }}
+              />
+            ))}
+          </Stack>
+        )}
+      </Box>
+    );
+  };
 
   return (
     <Box sx={{ bgcolor: "#fff" }}>
@@ -19,19 +121,17 @@ export default function Home() {
         <title>Mysurian - Discover Mysuru Like Never Before</title>
       </Helmet>
 
-      {/* HERO SECTION */}
+      {/* HERO */}
       <Box
         sx={{
           color: "white",
-          pt: { xs: 8, md: 12 },
-          pb: { xs: 10, md: 16 },
-          backgroundImage: `linear-gradient(
-        rgba(0,0,0,0.6),   /* top: semi-transparent black */
-        rgba(0,0,0,0.3)    /* bottom: lighter */
-      ),url(${heroImage})`,
+          pt: { xs: 10, md: 14 },
+          pb: { xs: 12, md: 18 },
+          backgroundImage: `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.3)), url(${heroImage})`,
           backgroundSize: "cover",
-          backgroundPosition: "center",
+          backgroundPosition: "center 40%",
           textAlign: "center",
+          height: "300px",
         }}
       >
         <Container maxWidth="md">
@@ -41,100 +141,107 @@ export default function Home() {
           >
             Discover Mysuru Like Never Before
           </Typography>
-          <Typography variant="h6" sx={{ opacity: 0.95, mb: 3 }}>
+          <Typography variant="h6" sx={{ opacity: 0.95, mb: 4 }}>
             Uncover the best places, experiences, and secrets of the city!
           </Typography>
 
+          {/* Search Bar */}
+          <Box
+            sx={{
+              maxWidth: 700,
+              mx: "auto",
+              borderRadius: 999,
+              px: 2,
+              py: 1,
+              mb: 3,
+            }}
+          >
+            <SearchBar placeholder="Search categories or places..." />
+          </Box>
+
+          {/* CTA Button BELOW search */}
           <Button
             variant="contained"
             size="large"
             onClick={() => navigate(`/categories`)}
             sx={{
-              bgcolor: "#fff",
-              color: "#B13D00",
-              fontWeight: "bold",
-              borderRadius: "30px",
-              px: 3,
-              "&:hover": { bgcolor: "#ffe6d7" },
+              bgcolor: "#f5b625",
+              color: "#f3f0f0ff",
+              fontWeight: 700,
+              borderRadius: 999,
+              px: 4,
+              py: 1.5,
+              textTransform: "none",
+              "&:hover": { bgcolor: "#ffcd42" },
             }}
           >
             Start Exploring
           </Button>
-
-          <Box sx={{ mt: 4 }}>
-            <SearchBar placeholder="Search categories or places..." />
-          </Box>
         </Container>
       </Box>
 
-      {/* FLOATING CATEGORIES */}
-      <Container
+      {/* HERO HIGHLIGHTS */}
+      <Box sx={{ pt: { xs: 4, md: 6 }, pb: 0 }}>
+        <HeroHighlights />
+      </Box>
+
+      {/* QUICK CATEGORIES */}
+      {/* <Container
         maxWidth="lg"
         sx={{
           mt: -6,
-          mb: 6,
+          mb: 8,
           position: "relative",
           zIndex: 2,
+          py: { xs: 8, md: 10 },
+        }}
+      > */}
+      <Box
+        sx={{
+          bgcolor: "#ffeede",
+          borderRadius: 3,
+          boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
+          p: { xs: 2, sm: 3 },
+          backdropFilter: "blur(6px)",
         }}
       >
-        <Box
-          sx={{
-            bgcolor: "#ffeede",
-            borderRadius: 3,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-            p: 3,
-          }}
-        >
-          <QuickCategories />
-        </Box>
-      </Container>
+        <QuickCategories />
+      </Box>
+      {/* </Container> */}
 
-      {/* FEATURED SECTION */}
-      <Box sx={{ bgcolor: "#1F1300", color: "white", pt: 12, pb: 6 }}>
-        <Container
-          maxWidth="lg"
-          sx={{
-            textAlign: { xs: "center", md: "left" },
-          }}
-        >
+      {/* FEATURED TOPICS */}
+      <Box sx={{ bgcolor: "#1F1300", color: "white", py: { xs: 8, md: 10 } }}>
+        <Container maxWidth="lg">
           <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>
             Featured Topics
           </Typography>
-          <FeaturedTopics />
+          <HorizontalScroll bgColor="#1F1300">
+            <FeaturedTopics />
+          </HorizontalScroll>
         </Container>
       </Box>
 
-      {/* LISTINGS */}
-      <Container
-        maxWidth="lg"
-        sx={{ py: 8, textAlign: { xs: "center", md: "left" } }}
-      >
+      {/* FEATURED LISTINGS */}
+      <Container maxWidth="lg" sx={{ py: { xs: 8, md: 10 } }}>
         <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>
           Featured Listings
         </Typography>
-        <FeaturedListings />
+        <HorizontalScroll bgColor="#fff">
+          <FeaturedListings />
+        </HorizontalScroll>
       </Container>
 
       {/* TRENDING */}
-      <Box
-        sx={{
-          bgcolor: "#FFF7F0",
-          py: 8,
-          textAlign: { xs: "center", md: "left" },
-        }}
-      >
+      <Box sx={{ bgcolor: "#FFF7F0", py: { xs: 8, md: 10 } }}>
         <Container maxWidth="lg">
           <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>
             Eyes Are Looking At
           </Typography>
-          <EyesAreLookingAt />
+          <HorizontalScroll bgColor="#FFF7F0">
+            <EyesAreLookingAt />
+          </HorizontalScroll>
         </Container>
       </Box>
-
-      {/* CTA */}
-      <Container maxWidth="lg" sx={{ py: 8 }}>
-        <CallToAction />
-      </Container>
     </Box>
   );
 }

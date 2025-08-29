@@ -100,6 +100,13 @@ export default function SearchResults() {
       );
   };
 
+  const stripHtml = (html) => {
+    if (!html) return "";
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    return div.textContent || div.innerText || "";
+  };
+
   // Get category list
   useEffect(() => {
     const fetchCategories = async () => {
@@ -357,7 +364,7 @@ export default function SearchResults() {
                           }}
                         >
                           {highlightText(
-                            item.description?.slice(0, 80) + "...",
+                            stripHtml(item.description)?.slice(0, 80) + "...",
                             searchQuery
                           )}
                         </Typography>

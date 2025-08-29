@@ -27,20 +27,19 @@ service cloud.firestore {
                     (request.resource.data.searchcount ==
                       (((resource.data.searchcount != null) ? resource.data.searchcount : 0) + 1));
     }
-
-    // ----- Reviews (one per user; doc id == uid) -----
+    
+    // ----- Reviews -----
     match /categories/{categoryId}/listings/{listingId}/reviews/{reviewId} {
-      allow read: if true; // public read
+      allow read: if true;
 
+      // one review per user per listing (doc id == uid)
       allow create: if isSignedIn()
                     && reviewId == request.auth.uid
-                    && request.resource.data.uid == request.auth.uid
-                    && numberInRange(request.resource.data.rating, 0, 5);
+                    && request.resource.data.uid == request.auth.uid;
 
       allow update: if isSignedIn()
                     && reviewId == request.auth.uid
-                    && request.resource.data.uid == resource.data.uid
-                    && numberInRange(request.resource.data.rating, 0, 5);
+                    && request.resource.data.uid == resource.data.uid;
 
       allow delete: if isAdmin() || (isSignedIn() && reviewId == request.auth.uid);
     }
@@ -60,10 +59,10 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // ----- Catch-all: PUBLIC READ for any other collections/subcollections -----
+    // ----- Catch-all: PUBLIC READ; Admin can write anywhere -----
     match /{document=**} {
-      allow read: if true;               // public read everywhere else
-      allow create, update, delete: if false;  // no writes unless above rules allowed them
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
   }
 }

@@ -62,6 +62,13 @@ const CategoryPage = () => {
   const [page, setPage] = useState(1);
   const itemsPerPage = 30;
 
+  const stripHtml = (html) => {
+    if (!html) return "";
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    return div.textContent || div.innerText || "";
+  };
+
   useEffect(() => {
     const fetchListings = async () => {
       try {
@@ -255,7 +262,8 @@ const CategoryPage = () => {
                           overflow: "hidden",
                         }}
                       >
-                        {listing.description || "No description provided."}
+                        {stripHtml(listing.description) ||
+                          "No description provided."}
                       </Typography>
                       <Box
                         display="flex"

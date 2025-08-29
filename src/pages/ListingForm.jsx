@@ -14,6 +14,7 @@ import {
 import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../firebaseConfig";
 import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth"; // ⬅️ added
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -295,18 +296,23 @@ const ListingForm = () => {
       return;
     }
     (async () => {
-      const ref = doc(db, categoryId, listingId);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data() || {};
-        const { baseFields, galleryObjects } = normalizeLoadedData(
-          data,
-          categoryName
-        );
-        setFields(baseFields);
-        setGalleryRows(
-          galleryObjects.length ? galleryObjects : [emptyGalleryRow]
-        );
+      try {
+        const ref = doc(db, categoryId, listingId); // top-level {categoryId}/{listingId}
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data() || {};
+          const { baseFields, galleryObjects } = normalizeLoadedData(
+            data,
+            categoryName
+          );
+          setFields(baseFields);
+          setGalleryRows(
+            galleryObjects.length ? galleryObjects : [emptyGalleryRow]
+          );
+        }
+      } catch (e) {
+        console.error("Failed to load listing:", e);
+        alert("Failed to load listing.");
       }
     })();
   }, [listingId, categoryId, categoryName]);
@@ -354,6 +360,19 @@ const ListingForm = () => {
     return Object.keys(e).length === 0;
   };
 
+  // ⬇️ NEW: safe guard before writes
+  async function ensureSignedInAndRefresh() {
+    const auth = getAuth();
+    const u = auth.currentUser;
+    if (!u) {
+      alert("Please sign in as admin first.");
+      throw new Error("Not signed in");
+    }
+    // Force refresh so latest custom claims are present
+    await u.getIdToken(true);
+    return u;
+  }
+
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -395,15 +414,38 @@ const ListingForm = () => {
       mapEmbed: fields.mapurl || "", // mirror for DetailPage
     };
 
-    if (listingId) {
-      await updateDoc(doc(db, categoryId, listingId), payload);
-    } else {
-      await addDoc(collection(db, categoryId), {
-        ...payload,
-        date: new Date().toISOString().split("T")[0],
-      });
+    try {
+      await ensureSignedInAndRefresh(); // ⬅️ make sure we have a user & fresh token
+
+      if (listingId) {
+        // top-level: {categoryId}/{listingId}
+        await updateDoc(doc(db, categoryId, listingId), payload);
+      } else {
+        await addDoc(collection(db, categoryId), {
+          ...payload,
+          date: new Date().toISOString().split("T")[0],
+        });
+      }
+
+      navigate(`/admin/${categoryId}/listings`);
+    } catch (e) {
+      console.error("Save failed:", e);
+      // Give clearer messaging for common permission error:
+      if (
+        e?.code === "permission-denied" ||
+        /insufficient permissions/i.test(e?.message || "")
+      ) {
+        alert(
+          "Missing or insufficient permissions.\n\n" +
+            "If this is an admin action, make sure your account is signed in and has admin rights, " +
+            "and that your Firestore rules allow admin writes on this path."
+        );
+      } else if (e?.message === "Not signed in") {
+        // already alerted above; no-op
+      } else {
+        alert("Save failed. Please try again.");
+      }
     }
-    navigate(`/admin/${categoryId}/listings`);
   };
 
   return (
