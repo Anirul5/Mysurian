@@ -120,30 +120,44 @@ export default function SearchResults() {
   // Fetch all results once
   useEffect(() => {
     if (!searchQuery || categories.length === 0) return;
+
     const fetchAllResults = async () => {
       setLoading(true);
       let allMatches = [];
+      const queryWords = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
 
       for (let category of categories) {
         const snapshot = await getDocs(collection(db, category));
         const matches = snapshot.docs
           .map((docSnap) => ({ id: docSnap.id, ...docSnap.data(), category }))
-          .filter((item) =>
-            Object.entries(item).some(([key, val]) => {
-              if (typeof val === "string") {
-                return val.toLowerCase().includes(searchQuery);
-              }
-              if (Array.isArray(val)) {
-                return val.some(
-                  (v) =>
-                    typeof v === "string" &&
-                    v.toLowerCase().includes(searchQuery)
-                );
-              }
-              return false;
-            })
-          )
-          .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+          .map((item) => {
+            const name = (item.name || "").toLowerCase();
+            const description = (item.description || "").toLowerCase();
+
+            let score = 0;
+
+            // Exact full name match
+            if (name === searchQuery.toLowerCase()) score += 100;
+
+            // Name starts with query
+            if (name.startsWith(searchQuery.toLowerCase())) score += 50;
+
+            // Multi-word tolerance (reward items containing all words)
+            if (queryWords.every((w) => name.includes(w))) score += 40;
+
+            // Word-based scoring
+            queryWords.forEach((word) => {
+              if (name.includes(word)) score += 20;
+              if (description.includes(word)) score += 10;
+            });
+
+            return { ...item, _score: score };
+          })
+          .filter((item) => item._score > 0) // only relevant matches
+          .sort((a, b) => {
+            if (b._score !== a._score) return b._score - a._score;
+            return (b.rating || 0) - (a.rating || 0);
+          });
 
         // Increment searchcount
         matches.forEach(async (match) => {
@@ -164,6 +178,7 @@ export default function SearchResults() {
       setLoading(false);
       setPage(1);
     };
+
     fetchAllResults();
   }, [searchQuery, categories]);
 
@@ -181,6 +196,12 @@ export default function SearchResults() {
           ? item.address?.toLowerCase().includes(filters.address.toLowerCase())
           : true
       );
+
+    if (filters.sortBy === "mostViewed") {
+      temp = [...temp].sort(
+        (a, b) => (b.searchcount || 0) - (a.searchcount || 0)
+      );
+    }
     setFilteredResults(temp);
     setPage(1);
   }, [filters, results]);
@@ -259,6 +280,17 @@ export default function SearchResults() {
           }}
           sx={{ minWidth: 200 }}
         />
+
+        <StyledFormControl>
+          <InputLabel>Sort By View</InputLabel>
+          <Select
+            value={filters.sortBy || ""}
+            onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
+          >
+            <MenuItem value="">Default</MenuItem>
+            <MenuItem value="mostViewed">Most Viewed</MenuItem>
+          </Select>
+        </StyledFormControl>
       </Box>
 
       {loading ? (

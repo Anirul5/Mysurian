@@ -104,7 +104,7 @@ export default function Home() {
                   height: 10,
                   borderRadius: "50%",
                   backgroundColor:
-                    index === currentPage ? "#f5b625" : "rgba(0,0,0,0.4)",
+                    index === currentPage ? "#f5b625" : "rgba(255, 0, 0, 0.4)",
                   mx: 0.5,
                   cursor: "pointer",
                 }}
