@@ -98,6 +98,7 @@ const CategoriesListPage = () => {
       sx={{
         py: { xs: 2, sm: 0 },
         px: { xs: 1, sm: 2 },
+        mb: 2,
       }}
     >
       {/* Header + Back button */}

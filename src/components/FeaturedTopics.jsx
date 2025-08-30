@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import useAllItems from "../hooks/useAllItems";
+import heroImage from "../assets/hero_mysuru.png";
 
 export default function FeaturedTopics() {
   const { allItems, loading } = useAllItems();
@@ -81,7 +82,7 @@ export default function FeaturedTopics() {
               <CardMedia
                 component="img"
                 height="160"
-                image={item.image || "/fallback.jpg"}
+                image={item.image || heroImage}
                 alt={item.name || "Featured"}
                 loading="lazy"
               />

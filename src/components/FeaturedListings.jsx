@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import useAllItems from "../hooks/useAllItems";
+import heroImage from "../assets/hero_mysuru.png";
 
 export default function FeaturedListings() {
   const { allItems, loading } = useAllItems();
@@ -18,6 +19,13 @@ export default function FeaturedListings() {
   const CardShell = ({ children }) => (
     <Box sx={{ flex: "0 0 auto", scrollSnapAlign: "start" }}>{children}</Box>
   );
+
+  const stripHtml = (html) => {
+    if (!html) return "";
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    return div.textContent || div.innerText || "";
+  };
 
   if (loading) {
     return (
@@ -72,27 +80,34 @@ export default function FeaturedListings() {
         <CardShell key={item.id}>
           <Card
             sx={{
-              width: 200,
-              height: 250,
-              borderRadius: 3,
               cursor: "pointer",
-              display: "flex",
-              flexDirection: "column",
-              "&:hover": { boxShadow: 6 },
+              borderRadius: 3,
+              overflow: "hidden",
+              width: 200,
+              "&:hover": { boxShadow: 6, transform: "translateY(-2px)" },
+              transition: "all .2s",
             }}
             onClick={() => go(item)}
           >
-            <CardActionArea sx={{ flexGrow: 1 }}>
+            <CardActionArea>
               <CardMedia
                 component="img"
-                height="160"
-                image={item.image || "/fallback.jpg"}
-                alt={item.name || "Editor's Pick"}
+                height="180"
+                image={item.image || heroImage}
+                alt={item.name || "Item"}
                 loading="lazy"
               />
               <CardContent>
-                <Typography variant="subtitle1" fontWeight={600} noWrap>
-                  {item.name}
+                <Typography sx={{ fontWeight: 600 }} title={item.name} noWrap>
+                  {item.name || item.title}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="#8d8b8bff"
+                  title={item.title}
+                  noWrap
+                >
+                  {stripHtml(item.description) || item.title}
                 </Typography>
               </CardContent>
             </CardActionArea>

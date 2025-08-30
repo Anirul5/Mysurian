@@ -63,6 +63,7 @@ export default function Home() {
             px: { xs: 1, md: 0 },
             pb: 1,
             "&::-webkit-scrollbar": { display: "none" },
+            paddingTop: "10px",
           }}
         >
           {children}
@@ -73,7 +74,7 @@ export default function Home() {
               sx={{
                 position: "absolute",
                 top: 0,
-                right: 0,
+                right: -2,
                 width: "60px",
                 height: "100%",
                 pointerEvents: "none",
@@ -186,31 +187,28 @@ export default function Home() {
       </Box>
 
       {/* QUICK CATEGORIES */}
-      {/* <Container
-        maxWidth="lg"
-        sx={{
-          mt: -6,
-          mb: 8,
-          position: "relative",
-          zIndex: 2,
-          py: { xs: 8, md: 10 },
-        }}
-      > */}
       <Box
         sx={{
           bgcolor: "#ffeede",
-          borderRadius: 3,
+          borderRadius: 0,
           boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
           p: { xs: 2, sm: 3 },
           backdropFilter: "blur(6px)",
         }}
       >
-        <QuickCategories />
+        <HorizontalScroll bgColor="#FFF7F0">
+          <QuickCategories />
+        </HorizontalScroll>
       </Box>
-      {/* </Container> */}
 
       {/* FEATURED TOPICS */}
-      <Box sx={{ bgcolor: "#1F1300", color: "white", py: { xs: 8, md: 10 } }}>
+      <Box
+        sx={{
+          bgcolor: "#1F1300",
+          color: "white",
+          py: { xs: "25px", md: "35px" },
+        }}
+      >
         <Container maxWidth="lg">
           <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>
             Featured Topics
@@ -222,7 +220,7 @@ export default function Home() {
       </Box>
 
       {/* FEATURED LISTINGS */}
-      <Container maxWidth="lg" sx={{ py: { xs: 8, md: 10 } }}>
+      <Container maxWidth="lg" sx={{ py: { xs: "25px", md: "35px" } }}>
         <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>
           Featured Listings
         </Typography>
@@ -231,8 +229,8 @@ export default function Home() {
         </HorizontalScroll>
       </Container>
 
-      {/* TRENDING */}
-      <Box sx={{ bgcolor: "#FFF7F0", py: { xs: 8, md: 10 } }}>
+      {/* Eyes Are Looking At */}
+      <Box sx={{ bgcolor: "#FFF7F0", py: { xs: "25px", md: "35px" } }}>
         <Container maxWidth="lg">
           <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>
             Eyes Are Looking At

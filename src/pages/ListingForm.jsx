@@ -73,6 +73,8 @@ const DEFAULT_FIELDS = {
   mapurl: "", // stored and mirrored to mapEmbed
   featured: "FALSE",
   eyes: "FALSE",
+  hero: "FALSE",
+  heroOrder: "",
 };
 
 const tf = (v) =>
@@ -704,6 +706,28 @@ const ListingForm = () => {
                 <MenuItem value="TRUE">TRUE</MenuItem>
                 <MenuItem value="FALSE">FALSE</MenuItem>
               </TextField>
+            </Grid>
+            {/* HeroHighlights */}
+            <Grid item xs={12}>
+              <TextField
+                label="Hero Highlight"
+                select
+                fullWidth
+                value={fields.hero}
+                onChange={(e) => handleChange("eyes", e.target.value)}
+              >
+                <MenuItem value="TRUE">TRUE</MenuItem>
+                <MenuItem value="FALSE">FALSE</MenuItem>
+              </TextField>
+            </Grid>
+            {/* HeroOrder */}
+            <Grid item xs={12}>
+              <TextField
+                label="Hero Highlights Order"
+                fullWidth
+                value={fields.heroOrder}
+                onChange={(e) => handleChange("heroOrder", e.target.value)}
+              />
             </Grid>
           </Grid>
         ) : (

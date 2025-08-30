@@ -24,6 +24,7 @@ const isTruthy = (v) => {
   return false;
 };
 const toOrder = (v) => (Number.isFinite(+v) ? +v : 999);
+
 const stripHtml = (html) => {
   if (!html) return "";
   const el = document.createElement("div");
